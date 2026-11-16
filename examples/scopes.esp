@@ -1,0 +1,11 @@
+// Demo de la tabla de símbolos: shadowing y ámbitos anidados (válido).
+entero x = 1;
+si (x > 0) {
+    real x = 2.5;           // oculta a la x global
+    si (x > 1.0) {
+        bool x = verdadero; // oculta a la x real
+        imprimir(x);
+    }
+    imprimir(x);            // vuelve a ser la x real
+}
+imprimir(x);                // vuelve a ser la x entera

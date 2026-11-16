@@ -1,0 +1,18 @@
+// Programa válido: no debe producir ningún error.
+entero contador = 0;
+real total = 0.0;
+bool seguir = verdadero;
+
+/* Suma 1.5 diez veces */
+mientras (seguir) {
+    total = total + 1.5;        // real + real -> real
+    contador = contador + 1;
+    seguir = contador < 10;
+}
+
+si (total >= 15.0 && !falso) {
+    real promedio = total / contador;   // real / entero -> real
+    imprimir(promedio);
+} sino {
+    imprimir(0);
+}

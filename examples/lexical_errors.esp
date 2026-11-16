@@ -1,0 +1,8 @@
+// Cada línea marcada tiene un error léxico.
+entero a = 5;
+entero b = 7 @ 2;       // carácter inválido '@'
+real c = 12.3.4;        // número mal formado
+entero 3abc = 1;        // identificador que empieza con dígito
+bool d = a & b;         // '&' suelto no es un operador válido
+/* este comentario nunca se cierra
+entero e = 1;
