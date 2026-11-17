@@ -51,5 +51,5 @@ def tokens_by_hand(text: str) -> list[Token]:
 
 
 def messages(errors) -> list[str]:
-    """Turn errors into "Línea N: ..." strings for easy comparison."""
+    """Turn errors into "Línea N, columna M: ..." strings for easy comparison."""
     return [str(e) for e in errors]

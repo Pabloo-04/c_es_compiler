@@ -3,7 +3,7 @@
 Input:  the source code as a string.
 Output: (tokens, errors)
   - tokens: list of Token, ALWAYS ending with an EOF token.
-  - errors: list of CompileError with phase LEXICAL (empty if all is fine).
+  - errors: list of LexicalError (empty if all is fine).
 
 Rules (see docs/especificacion_tokens.md):
   - Whitespace and comments (// and /* */) are skipped.
@@ -24,7 +24,7 @@ Team decisions implemented here (confirm with P1 so the docs match):
   - A malformed lexeme is consumed whole and reported with ONE error.
 """
 
-from .errors import CompileError, Phase
+from .errors import CompileError, LexicalError
 from .tokens import (
     DELIMITERS,
     DOUBLE_OPERATORS,
@@ -87,7 +87,7 @@ class Lexer:
         self.tokens.append(Token(type_, lexeme, line, column))
 
     def error(self, message: str, line: int, column: int) -> None:
-        self.errors.append(CompileError(Phase.LEXICAL, line, column, message))
+        self.errors.append(LexicalError(line, column, message))
 
     # ------------------------------------------------------------------
     # Main loop

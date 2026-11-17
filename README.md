@@ -32,21 +32,32 @@ pip install -r requirements.txt
 ## Uso
 
 ```bash
-python main.py examples/valid.esp                 # lexer + semántico
-python main.py examples/valid.esp --tokens        # además muestra los tokens
+python main.py examples/valid.esp                  # lexer + semántico
+python main.py examples/valid.esp --tokens         # además muestra la tabla de tokens
+python main.py examples/scopes.esp --simbolos      # además muestra la tabla de símbolos
+python main.py examples/valid.esp --tokens --simbolos
 python main.py examples/lexical_errors.esp --lexer-only
 python main.py examples/semantic_errors.esp
 ```
 
-Los errores se muestran con su línea y su causa:
+Errores y advertencias se muestran ordenados por posición, con un único formato
+(en rojo los errores y en amarillo las advertencias cuando la salida es una terminal):
 
 ```
-=== Errores semánticos ===
-Línea 2: no se puede asignar bool a entero
-Línea 4: la variable 'y' ya fue declarada en este ámbito (línea 3)
+=== Errores semánticos (2) ===
+Línea 2, columna 12: no se puede asignar bool a entero
+Línea 4, columna 8: variable 'y' ya declarada en este ámbito (línea 3)
 ```
 
-Código de salida: `0` si no hay errores, `1` si hay errores y `2` si no se pudo leer el archivo.
+`--simbolos` muestra todas las variables declaradas con su ámbito, tipo, posición y
+si fueron inicializadas y usadas; los ámbitos internos aparecen indentados para que
+se vea el shadowing.
+
+Si hay errores léxicos no se corre el semántico. Mientras el semántico no esté
+implementado, `main.py` lo avisa y muestra igual el resultado del lexer.
+
+Código de salida: `0` sin errores (puede haber advertencias), `1` con errores y `2`
+si no se pudo leer el archivo.
 
 ## Pruebas
 
@@ -66,7 +77,7 @@ c_compiler/
 ├── main.py                    # CLI (listo)
 ├── compiler/
 │   ├── tokens.py              # Token y TokenType: contrato compartido (listo)
-│   ├── errors.py              # CompileError: formato común (listo)
+│   ├── errors.py              # errores y advertencias: formato común (listo)
 │   ├── lexer.py               # P2
 │   ├── symbol_table.py        # P3
 │   ├── statements.py          # P4: agrupar tokens en sentencias
@@ -74,6 +85,7 @@ c_compiler/
 │   └── semantic.py            # P3 + P4: orquesta el análisis
 ├── tests/
 │   ├── helpers.py             # tokens_by_hand(): tokens sin depender del lexer
+│   ├── test_errors.py
 │   ├── test_lexer.py
 │   ├── test_symbol_table.py
 │   └── test_semantic.py
@@ -112,11 +124,26 @@ class Token:
 
 El lexer siempre termina la lista con un token `EOF`. **No cambiar `tokens.py` sin avisar a todo el equipo.**
 
-### Errores
+### Errores y advertencias
 
-Las dos fases **acumulan** los errores en una lista y siguen analizando; no se
-detienen en el primero. Todos usan `CompileError(phase, line, column, message)`,
-y `str(error)` da `"Línea N: mensaje"`. Si hay errores léxicos, `main.py` no corre el semántico.
+Las dos fases **acumulan** los diagnósticos en una lista y siguen analizando;
+no se detienen en el primero. Todos se imprimen con un único formato:
+
+```
+Línea 7, columna 3: variable 'y' no declarada
+```
+
+| Clase (`compiler/errors.py`) | Uso |
+| --- | --- |
+| `LexicalError(line, column, message)` | Errores del lexer |
+| `SemanticError(line, column, message)` | Errores del semántico |
+| `CompileWarning(line, column, message)` | Advertencias: el programa sigue siendo válido |
+
+`LexicalError` y `SemanticError` heredan de `CompileError`. `error.labeled()` agrega
+el tipo adelante (`[error semántico] Línea 7, columna 3: ...`).
+
+Advertencias previstas (TODO de P3 en `semantic.py`): variable sin usar, shadowing
+y uso sin inicializar. Si hay errores léxicos, `main.py` no corre el semántico.
 
 ### Sentencias
 
