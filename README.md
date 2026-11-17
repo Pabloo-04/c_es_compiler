@@ -1,5 +1,11 @@
 # Compilador Fase 1: lexer y analizador semántico
 
+**Integrantes:**
+
+* Pablo Vides 00080323
+* Alejandro Melgar
+* Gabriela
+
 Lexer y analizador semántico en Python para un lenguaje propio estilo C con
 palabras clave en español. Los programas fuente usan la extensión `.esp`.
 
@@ -121,14 +127,15 @@ orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
 
 ### Tipos
 
-| Operación | Resultado |
-| --- | --- |
-| `entero + entero` (también `- * /`) | `entero` |
-| `entero + real`, `real + real` | `real` |
-| `< > <= >=` entre números | `bool` |
-| `== !=` | `bool` |
-| `&& \|\|` entre `bool`, `!bool` | `bool` |
-| condición de `si` / `mientras` | debe ser `bool` |
+
+| Operación                           | Resultado      |
+| ------------------------------------ | -------------- |
+| `entero + entero` (también `- * /`) | `entero`       |
+| `entero + real`, `real + real`       | `real`         |
+| `< > <= >=` entre números           | `bool`         |
+| `== !=`                              | `bool`         |
+| `&& ||` entre `bool`, `!bool`        | `bool`         |
+| condición de`si` / `mientras`       | debe ser`bool` |
 
 <!-- TODO(P4): confirmar la tabla y decidir si `real x = 5;` es válido. -->
 
@@ -136,15 +143,16 @@ orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
 
 ### Tokens
 
-| Token | Expresión regular |
-| --- | --- |
+
+| Token               | Expresión regular                                                                   |
+| ------------------- | ------------------------------------------------------------------------------------ |
 | Palabras reservadas | `entero`, `real`, `bool`, `si`, `sino`, `mientras`, `imprimir`, `verdadero`, `falso` |
-| ID | `[a-zA-Z_][a-zA-Z0-9_]*` (después de descartar las palabras reservadas) |
-| NUM_ENTERO | `[0-9]+` |
-| NUM_REAL | `[0-9]+\.[0-9]+` |
-| Operadores | `==`, `!=`, `<=`, `>=`, `&&`, `\|\|`, `+`, `-`, `*`, `/`, `<`, `>`, `=`, `!` |
-| Delimitadores | `(`, `)`, `{`, `}`, `;`, `,` |
-| Comentarios | `//.*` y `/\*(.\|\n)*?\*/` |
+| ID                  | `[a-zA-Z_][a-zA-Z0-9_]*` (después de descartar las palabras reservadas)             |
+| NUM_ENTERO          | `[0-9]+`                                                                             |
+| NUM_REAL            | `[0-9]+\.[0-9]+`                                                                     |
+| Operadores          | `==`, `!=`, `<=`, `>=`, `&&`, `||`, `+`, `-`, `*`, `/`, `<`, `>`, `=`, `!`           |
+| Delimitadores       | `(`, `)`, `{`, `}`, `;`, `,`                                                         |
+| Comentarios         | `//.*` y `/\*(.|\n)*?\*/`                                                            |
 
 La especificación formal y el autómata están en [docs/especificacion_tokens.md](docs/especificacion_tokens.md) y [docs/automata.md](docs/automata.md).
 
@@ -168,25 +176,27 @@ No hay funciones en esta fase: los bloques de `si` y `mientras` bastan para demo
 
 <!-- TODO: reemplazar "Persona N" por los nombres. -->
 
-| Persona | Responsabilidad | Archivos |
-| --- | --- | --- |
-| Persona 1 | Especificación, autómata, reflexión, guion del video | `docs/` |
-| Persona 2 | Lexer | `compiler/lexer.py` |
-| Persona 3 | Tabla de símbolos y ámbitos | `compiler/symbol_table.py`, secciones P3 de `semantic.py` |
-| Persona 4 | Sentencias y reglas de tipos | `compiler/statements.py`, `compiler/type_rules.py`, secciones P4 de `semantic.py` |
-| Persona 5 | Pruebas, repositorio, README, edición del video | `tests/`, `README.md` |
+
+| Persona   | Responsabilidad                                         | Archivos                                                                          |
+| --------- | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Persona 1 | Especificación, autómata, reflexión, guion del video | `docs/`                                                                           |
+| Persona 2 | Lexer                                                   | `compiler/lexer.py`                                                               |
+| Persona 3 | Tabla de símbolos y ámbitos                           | `compiler/symbol_table.py`, secciones P3 de `semantic.py`                         |
+| Persona 4 | Sentencias y reglas de tipos                            | `compiler/statements.py`, `compiler/type_rules.py`, secciones P4 de `semantic.py` |
+| Persona 5 | Pruebas, repositorio, README, edición del video        | `tests/`, `README.md`                                                             |
 
 ### Cronograma
 
-| Día | P1 | P2 | P3 | P4 | P5 |
-| --- | --- | --- | --- | --- | --- |
-| 1 | Tabla de tokens final | Esqueleto del lexer | Diseño de la tabla de símbolos | Diseño de las reglas de tipos | Repositorio y pytest |
-| 2 | Autómata y borrador de la reflexión | Lexer completo | Pila de ámbitos y declaraciones | Agrupación de sentencias | Pruebas del lexer |
-| 3 | Reflexión terminada | Errores léxicos y comentarios | No declaradas y shadowing | Reglas de tipos | Pruebas del semántico |
-| 4 | Guion del video | Apoyo a la integración | Integración con P4 | Integración con P3 | Correr todo y reportar fallos |
-| 5 | Programas de ejemplo | Corrección de errores | Corrección de errores | Corrección de errores | README final |
-| 6 | Grabación | Grabación | Grabación | Grabación | Primer corte del video |
-| 7 | Revisión y entrega | Revisar el video | Revisar el video | Revisar el video | Subir el video |
+
+| Día | P1                                    | P2                             | P3                               | P4                             | P5                            |
+| ---- | ------------------------------------- | ------------------------------ | -------------------------------- | ------------------------------ | ----------------------------- |
+| 1    | Tabla de tokens final                 | Esqueleto del lexer            | Diseño de la tabla de símbolos | Diseño de las reglas de tipos | Repositorio y pytest          |
+| 2    | Autómata y borrador de la reflexión | Lexer completo                 | Pila de ámbitos y declaraciones | Agrupación de sentencias      | Pruebas del lexer             |
+| 3    | Reflexión terminada                  | Errores léxicos y comentarios | No declaradas y shadowing        | Reglas de tipos                | Pruebas del semántico        |
+| 4    | Guion del video                       | Apoyo a la integración        | Integración con P4              | Integración con P3            | Correr todo y reportar fallos |
+| 5    | Programas de ejemplo                  | Corrección de errores         | Corrección de errores           | Corrección de errores         | README final                  |
+| 6    | Grabación                            | Grabación                     | Grabación                       | Grabación                     | Primer corte del video        |
+| 7    | Revisión y entrega                   | Revisar el video               | Revisar el video                 | Revisar el video               | Subir el video                |
 
 **Hitos:** lexer completo el día 3; flujo lexer → semántico el día 4.
 
