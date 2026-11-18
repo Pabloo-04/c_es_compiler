@@ -30,7 +30,7 @@ pytest tests/test_lexer.py -v      # P5
 ## 3. Semántico (P3 y P4, 3:30)
 
 ```bash
-python main.py examples/scopes.esp           # P3: shadowing
+python main.py examples/scopes.esp --simbolos # P3: shadowing
 python main.py examples/semantic_errors.esp  # P3 y P4
 python main.py examples/valid.esp
 pytest -v                                # P5

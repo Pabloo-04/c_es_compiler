@@ -45,7 +45,7 @@ si ( verdadero ) {
 def test_undeclared_variable():
     errors = errors_of("x = 5 ;")
     assert len(errors) == 1
-    assert errors[0].startswith("Línea 1:")
+    assert errors[0].startswith("Línea 1,")
     assert "'x'" in errors[0]
 
 
@@ -55,7 +55,7 @@ entero x = 1 ;
 entero x = 2 ;
 """)
     assert len(errors) == 1
-    assert errors[0].startswith("Línea 2:")
+    assert errors[0].startswith("Línea 2,")
 
 
 def test_variable_out_of_scope():
@@ -66,7 +66,7 @@ si ( verdadero ) {
 z = 2 ;
 """)
     assert len(errors) == 1
-    assert errors[0].startswith("Línea 4:")
+    assert errors[0].startswith("Línea 4,")
 
 
 # TODO(P5): use inside an expression: `entero y = w + 1 ;` with w undeclared.
@@ -78,7 +78,11 @@ z = 2 ;
 # P4: types
 # ---------------------------------------------------------------------------
 def test_assign_bool_to_int():
-    assert errors_of("entero x = verdadero ;") == ["Línea 1: no se puede asignar bool a entero"]
+    errors = errors_of("entero x = verdadero ;")
+    assert len(errors) == 1
+    # The column is up to P4 (start of the declaration or of the value).
+    assert errors[0].startswith("Línea 1, columna ")
+    assert errors[0].endswith(": no se puede asignar bool a entero")
 
 
 def test_int_plus_real_is_real():
@@ -93,7 +97,7 @@ si ( x ) {
 }
 """)
     assert len(errors) == 1
-    assert errors[0].startswith("Línea 2:")
+    assert errors[0].startswith("Línea 2,")
 
 
 def test_while_condition_must_be_bool():

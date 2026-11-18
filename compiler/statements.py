@@ -62,7 +62,7 @@ def group(tokens: list[Token]) -> tuple[list[Statement], list[CompileError]]:
     """Turn the lexer's token list into a flat list of statements.
 
     If a statement matches no form (e.g. "x + ;" or a missing ";"), report
-    an error with phase SEMANTIC and skip to the next ";" or "}" to keep
+    a SemanticError and skip to the next ";" or "}" to keep
     analyzing (error recovery).
     """
     # TODO(P4): walk the tokens with an index i, ignoring the EOF token.

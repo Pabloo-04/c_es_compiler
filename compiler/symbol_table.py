@@ -24,6 +24,8 @@ class Symbol:
     type: str          # "entero", "real" or "bool" (see type_rules.py)
     line: int          # where it was declared (useful for the redeclaration message)
     column: int
+    initialized: bool = False  # True once it gets a value (declared with "=" or assigned)
+    used: bool = False         # True once it appears in an expression (for warnings)
 
 
 class SymbolTable:
