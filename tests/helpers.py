@@ -16,28 +16,15 @@ is what the real lexer is for.
 
 import re
 
-from compiler.tokens import (
-    DELIMITERS,
-    DOUBLE_OPERATORS,
-    KEYWORDS,
-    SINGLE_OPERATORS,
-    Token,
-    TokenType,
-)
-
-_FIXED = {**KEYWORDS, **DOUBLE_OPERATORS, **SINGLE_OPERATORS, **DELIMITERS}
+from compiler.tokens import Token, TokenType, classify
 
 
 def _type_of(lexeme: str) -> TokenType:
-    if lexeme in _FIXED:
-        return _FIXED[lexeme]
-    if re.fullmatch(r"[0-9]+\.[0-9]+", lexeme):
-        return TokenType.REAL_LITERAL
-    if re.fullmatch(r"[0-9]+", lexeme):
-        return TokenType.INT_LITERAL
-    if re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]*", lexeme):
-        return TokenType.ID
-    raise ValueError(f"tokens_by_hand: unrecognized lexeme {lexeme!r}")
+    # Uses the formal regex definition from compiler/tokens.py.
+    type_ = classify(lexeme)
+    if type_ is None:
+        raise ValueError(f"tokens_by_hand: unrecognized lexeme {lexeme!r}")
+    return type_
 
 
 def tokens_by_hand(text: str) -> list[Token]:

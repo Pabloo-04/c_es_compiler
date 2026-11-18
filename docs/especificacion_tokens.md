@@ -29,6 +29,17 @@ digito = [0-9]
 | Comentarios (se ignoran) | `//.*` y `/\*(.\|\n)*?\*/` | | — |
 | Espacios (se ignoran) | `[ \t\r\n]+` | | — |
 
+## Versión ejecutable
+
+Esta tabla está implementada en `compiler/tokens.py`:
+
+- **`TOKEN_PATTERNS`:** lista de pares (tipo, expresión regular) en orden de prioridad.
+- **`MASTER_PATTERN`:** todas las expresiones regulares unidas en una sola.
+- **`classify(lexema)`:** devuelve el tipo de un lexema completo.
+
+`tests/test_token_spec.py` verifica que el lexer a mano produce los mismos tokens que
+estas expresiones regulares. La gramática en BNF está en [gramatica.md](gramatica.md).
+
 ## Reglas de desambiguación
 
 1. **Lexema más largo (maximal munch):** `==` es un token, no dos `=`; `enteros` es un ID, no `entero` + `s`.

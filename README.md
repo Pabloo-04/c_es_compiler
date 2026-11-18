@@ -87,11 +87,13 @@ c_compiler/
 │   ├── helpers.py             # tokens_by_hand(): tokens sin depender del lexer
 │   ├── test_errors.py
 │   ├── test_lexer.py
+│   ├── test_token_spec.py
 │   ├── test_symbol_table.py
 │   └── test_semantic.py
 ├── examples/                  # programas .esp para las demos
 └── docs/
     ├── especificacion_tokens.md   # P1
+    ├── gramatica.md               # gramática en BNF y EBNF
     ├── automata.md                # P1
     ├── reflexion.md               # P1
     └── guion_video.md             # P1
@@ -181,7 +183,9 @@ orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
 | Delimitadores       | `(`, `)`, `{`, `}`, `;`, `,`                                                         |
 | Comentarios         | `//.*` y `/\*(.|\n)*?\*/`                                                            |
 
-La especificación formal y el autómata están en [docs/especificacion_tokens.md](docs/especificacion_tokens.md) y [docs/automata.md](docs/automata.md).
+La especificación formal y el autómata están en [docs/especificacion_tokens.md](docs/especificacion_tokens.md) y [docs/automata.md](docs/automata.md). La versión ejecutable de las expresiones regulares es `TOKEN_PATTERNS` en `compiler/tokens.py`, y `tests/test_token_spec.py` verifica que el lexer coincide con ella.
+
+La gramática completa (léxica y sintáctica, en BNF y EBNF, con precedencia de operadores) está en [docs/gramatica.md](docs/gramatica.md).
 
 ### Sentencias
 
