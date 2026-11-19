@@ -10,16 +10,8 @@ class SemanticAnalyzer:
         self.table = SymbolTable()
         self.errors: list[CompileError] = []
         self.warnings: list[CompileWarning] = []
-        # Every symbol ever declared, with the scope depth it was declared at.
-        # Scopes are popped when a block closes, so the table alone cannot show
-        # them at the end; main.py --simbolos prints this list instead.
         self.declared: list[tuple[int, Symbol]] = []
-        # Position (line, column) of every "{" not yet closed, innermost last.
         self.open_braces: list[tuple[int, int]] = []
-        # P4: which statement opened each "{" still open (IF, WHILE, ELSE, or
-        # None for a bare block), innermost last; the owner of the last "}"
-        # closed; and the previous statement. Used to check that 'sino' comes
-        # right after the block of an 'si'.
         self.block_owners: list[StatementType | None] = []
         self.closed_owner: StatementType | None = None
         self.previous: Statement | None = None
@@ -66,7 +58,6 @@ class SemanticAnalyzer:
             self.warn_unused(self.table.close_scope() or [])
         self.open_braces.clear()
 
-        # Global scope: it is never "closed", so check it here.
         self.warn_unused(self.table.current_symbols())
         return self.errors
 
@@ -95,19 +86,8 @@ class SemanticAnalyzer:
         self.warn_unused(symbols)
 
     def declaration(self, s: Statement) -> None:
-        # Order matters:
-        #   1) P4: type of the initial expression (if there is "=") and is_assignable.
-        #      Evaluated BEFORE declaring, so `entero x = x;` flags x as undeclared.
-        #   2) P3: declare in the table; if it returns a Symbol -> redeclaration.
-        #      Set initialized=True when there is "=".
-        #      On success, call self.record_declaration(symbol).
-        #   3) P3: WARNING (shadowing) if, BEFORE declaring, lookup(name) found a
-        #      symbol in an OUTER scope:
-        #      "la variable 'x' oculta a otra declarada en la línea 2"
-        # Undeclared variables in the initial expression are reported BEFORE
-        # declaring, so `entero x = x;` flags the right-hand x.
+    
         self.check_usage(s.expression)
-        # P4 step 1: the initial value must fit the declared type.
         self.check_assignable(TYPE_OF_TOKEN[s.data_type.type], s.expression)
 
         name, data_type = s.name, s.data_type
@@ -161,7 +141,7 @@ class SemanticAnalyzer:
                 )
 
     # ------------------------------------------------------------------
-    # P4: types in assignments, conditions and imprimir
+    # types in assignments, conditions and imprimir
     # ------------------------------------------------------------------
     def assignment(self, s: Statement) -> None:
         # The right-hand side is evaluated first: in `x = x + 1;` the x on the
@@ -211,7 +191,7 @@ class SemanticAnalyzer:
             self.error("'sino' sin un 'si' correspondiente", keyword.line, keyword.column)
 
     # ------------------------------------------------------------------
-    # P4 helpers
+    # helpers
     # ------------------------------------------------------------------
     def type_of(self, expression: list[Token]) -> str | None:
         """Type of an expression, or None if it has an error (already reported).
