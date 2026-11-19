@@ -5,6 +5,7 @@
 * Pablo Vides 00080323
 * Alejandro Melgar
 * Gabriela
+* Paola Pérez Pérez 00117222
 
 Lexer y analizador semántico en Python para un lenguaje propio estilo C con
 palabras clave en español. Los programas fuente usan la extensión `.esp`.
@@ -162,11 +163,21 @@ orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
 | `entero + entero` (también `- * /`) | `entero`       |
 | `entero + real`, `real + real`       | `real`         |
 | `< > <= >=` entre números           | `bool`         |
-| `== !=`                              | `bool`         |
-| `&& ||` entre `bool`, `!bool`        | `bool`         |
-| condición de`si` / `mientras`       | debe ser`bool` |
+| `== !=` entre números o entre `bool` | `bool`         |
+| `&& \|\|` entre `bool`, `!bool`        | `bool`         |
+| `-entero`, `-real` (menos unario)    | el mismo tipo  |
+| condición de `si` / `mientras`      | debe ser `bool` |
 
-<!-- TODO(P4): confirmar la tabla y decidir si `real x = 5;` es válido. -->
+Cualquier otra combinación es un error (`operación inválida: entero && bool`).
+
+**Asignación:** el valor debe ser del mismo tipo que la variable, con una excepción:
+un `entero` se puede guardar en un `real` (`real x = 5;` es válido), pero no al revés
+(`entero x = 2.5;` da `no se puede asignar real a entero`, porque perdería los decimales).
+
+El tipo de una expresión se calcula en `type_rules.expression_type()` con descenso
+recursivo: una función por nivel de precedencia de [docs/gramatica.md](docs/gramatica.md).
+Un mismo problema genera un solo error: si una subexpresión ya es inválida, las
+operaciones que la contienen no agregan más mensajes.
 
 ## El lenguaje
 
@@ -250,6 +261,6 @@ pull request a `main` y `pytest` antes de cada merge.
 
 ## Video
 
-<!-- TODO(P5): enlace al video final. -->
+<!-- enlace al video final. -->
 
 Guion y tiempos en [docs/guion_video.md](docs/guion_video.md).
