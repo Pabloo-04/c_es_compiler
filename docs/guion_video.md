@@ -4,16 +4,76 @@
 
 Reglas: todos aparecen y se ve el código ejecutándose, no solo diapositivas.
 
-| # | Segmento | Quién | Tiempo | Acumulado |
-| --- | --- | --- | --- | --- |
-| 1 | Lenguaje y tokens | P1 | 1:30 | 1:30 |
-| 2 | Lexer | P2 y P5 | 3:00 | 4:30 |
-| 3 | Semántico | P3 y P4 | 3:30 | 8:00 |
-| 4 | Reflexión | P1 | 1:00 | 9:00 |
+
+| # | Segmento          | Quién  | Tiempo | Acumulado |
+| - | ----------------- | ------- | ------ | --------- |
+| 1 | Lenguaje y tokens | P1      | 1:30   | 1:30      |
+| 2 | Lexer             | P2 y P5 | 3:00   | 4:30      |
+| 3 | Semántico        | P3 y P4 | 3:30   | 8:00      |
+| 4 | Reflexión        | P1      | 1:00   | 9:00      |
 
 ## 1. Lenguaje y tokens (P1, 1:30)
 
-<!-- TODO(P1): texto. Mostrar docs/especificacion_tokens.md y docs/automata.md. -->
+Unas 250 palabras. A ritmo normal (unas 160 por minuto) dura alrededor de 1:30. Si al
+cronometrar se pasa, recortar primero el bloque 3, que ahorra unos 15 segundos.
+
+### Bloque 1: el lenguaje (0:00–0:20)
+
+> **En pantalla:** [examples/valid.esp](../examples/valid.esp) en el editor.
+
+"Hola. Nuestro compilador trabaja con un lenguaje propio, parecido a C, pero con las
+palabras clave en español. Tiene tres tipos de datos, `entero`, `real` y `bool`, y las
+sentencias `si`, `sino`, `mientras` e `imprimir`. En esta fase no hay funciones: los
+bloques con llaves bastan para mostrar los ámbitos. Antes de analizar este programa, el
+compilador tiene que partirlo en piezas: los tokens."
+
+### Bloque 2: alfabeto y tokens (0:20–0:45)
+
+> **En pantalla:** la tabla de tokens de
+> [especificacion_tokens.md](especificacion_tokens.md).
+
+"El alfabeto tiene 84 caracteres ASCII: letras, dígitos, operadores, delimitadores y
+espacios. Con él definimos 32 tipos de token, cada uno con una expresión regular. Por
+ejemplo, un identificador es una letra seguida de letras o dígitos, y un número real son
+dígitos, un punto y más dígitos."
+
+### Bloque 3: desambiguación (0:45–1:00)
+
+> **En pantalla:** la misma página, en "Reglas de desambiguación".
+
+"Cuando hay ambigüedad aplicamos dos reglas. Primero, se toma el lexema más largo: `==`
+es un solo operador y `enteros` es un identificador, no la palabra `entero` más una `s`.
+Segundo, las palabras reservadas ganan sobre los identificadores."
+
+### Bloque 4: el autómata (1:00–1:25)
+
+> **En pantalla:** [img/automata.png](img/automata.png) a pantalla completa. Señalar el
+> recorrido con el cursor.
+
+"Estas expresiones regulares se implementan con un autómata finito. Con `3.14`, el
+autómata pasa de q0 a q2 con el 3, a q3 con el punto y a q4 con el 1 y el 4; q4 es de
+aceptación, así que es un número real. En cambio, `12.` termina en q3, que no acepta, y
+`3abc` cae en el estado de error e1. Por el teorema de Kleene, todo lenguaje que reconoce
+un autómata finito es regular: los tokens son un lenguaje de tipo 3."
+
+### Bloque 5: código ejecutándose y pase a P2 (1:25–1:30)
+
+> **En pantalla:** la terminal.
+
+```bash
+python main.py examples/valid.esp --tokens
+```
+
+"Y esta es la tabla de tokens real que produce nuestro lexer. Les explica cómo funciona…"
+*(nombre de P2)*.
+
+### Notas para grabar
+
+- Ensayar el recorrido de `3.14` sobre la imagen. Es el momento más visual del segmento.
+- Para el bloque 5, dejar el comando escrito de antemano y solo presionar Enter. La salida
+  es larga: hacer scroll hasta arriba o mostrar solo las primeras líneas.
+- La reflexión (segmento 4) retoma la idea de los lenguajes "tipo 3". No hace falta
+  explicar la jerarquía de Chomsky aquí; basta nombrarla.
 
 ## 2. Lexer (P2 y P5, 3:00)
 
@@ -44,7 +104,7 @@ pytest -v                                # P5
 
 ## Checklist de grabación
 
-- [ ] Terminal con letra grande y fondo legible.
-- [ ] Probar todos los comandos antes de grabar.
-- [ ] Cronometrar cada segmento.
-- [ ] Duración final < 10:00.
+- [X]  Terminal con letra grande y fondo legible.
+- [X]  Probar todos los comandos antes de grabar.
+- [X]  Cronometrar cada segmento.
+- [X]  Duración final < 10:00.

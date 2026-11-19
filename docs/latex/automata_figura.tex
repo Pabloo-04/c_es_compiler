@@ -1,0 +1,18 @@
+% Figura suelta del autómata, para el video y para docs/img/automata.png.
+% Compilar:  pdflatex automata_figura.tex
+\documentclass[tikz, border=12pt]{standalone}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage{upquote}   % comillas rectas en \texttt: '.'
+\usetikzlibrary{automata, arrows.meta, positioning}
+
+\begin{document}
+\begin{tikzpicture}
+  \node (afd) {\input{automata_diagrama.tex}};
+  \node[below=1mm of afd, font=\small\sffamily, align=center] {%
+    $L$ = \texttt{[a-zA-Z\_]} \quad $D$ = \texttt{[0-9]} \quad
+    \tikz[baseline=-0.6ex]\draw[semithick, fill=green!10] (0,0) circle (1.6mm) (0,0) circle (1.1mm); acepta \quad
+    \tikz[baseline=-0.6ex]\draw[semithick, dashed, draw=red!70!black, fill=red!10] (0,0) circle (1.6mm); error \quad
+    \texttt{'.'}$^{\dagger}$: solo si el punto va seguido de un dígito};
+\end{tikzpicture}
+\end{document}

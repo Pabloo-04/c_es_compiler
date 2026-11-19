@@ -1,0 +1,311 @@
+% Autómata finito de identificadores y números, y por qué reconoce un lenguaje regular.
+% Responsable: Persona 1.
+%
+% Compilar (dos pasadas, para las referencias cruzadas):
+%   pdflatex automata.tex && pdflatex automata.tex
+% o bien:
+%   latexmk -pdf automata.tex
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[spanish, es-noshorthands, es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{upquote}
+\usepackage[margin=2.3cm]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{tikz}
+\usetikzlibrary{automata, arrows.meta, positioning}
+\usepackage[hidelinks]{hyperref}
+
+\theoremstyle{plain}
+\newtheorem{teorema}{Teorema}
+\newtheorem{corolario}[teorema]{Corolario}
+\theoremstyle{definition}
+\newtheorem{definicion}[teorema]{Definición}
+
+\newcommand{\Sig}{\Sigma}
+\newcommand{\cls}[1]{\textsf{#1}}            % clase de caracteres
+\newcommand{\pto}{\texttt{'.'}}               % el carácter punto
+\newcommand{\lex}[1]{\texttt{#1}}             % un lexema
+\newcommand{\Lang}{\mathcal{L}}
+
+\title{Autómata finito del analizador léxico:\\identificadores y números}
+\author{Compilador Fase 1 --- Persona 1}
+\date{Noviembre de 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Se define formalmente el autómata finito determinista (AFD) que reconoce los
+identificadores y los literales numéricos del lenguaje, incluidos los estados de error
+del analizador léxico. A partir del teorema de Kleene se demuestra que cada clase de
+token es un lenguaje regular, y se verifica en sentido inverso derivando, desde el
+autómata, las mismas expresiones regulares de la especificación de tokens.
+\end{abstract}
+
+% ======================================================================
+\section{Clases de caracteres}
+
+Para que el diagrama sea legible, el alfabeto $\Sig$ (definido en
+\nolinkurl{docs/especificacion_tokens.md}) se agrupa en clases. Cada transición etiquetada
+con una clase representa una transición por cada carácter de esa clase.
+
+\begin{center}
+\begin{tabular}{>{$}c<{$} l l}
+  \toprule
+  \text{Clase} & Caracteres & Expresión regular \\
+  \midrule
+  L      & letras ASCII y guion bajo & \texttt{[a-zA-Z\_]} \\
+  D      & dígitos                   & \texttt{[0-9]} \\
+  \pto   & el punto                  & \texttt{\textbackslash.} \\
+  O      & cualquier otro carácter de $\Sig$ (espacios, operadores, delimitadores) & --- \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+% ======================================================================
+\section{Definición formal}
+
+\begin{definicion}[Autómata finito determinista]
+Un AFD es una 5-tupla $M = (Q, \Sig, \delta, q_0, F)$ donde $Q$ es un conjunto finito de
+estados, $\Sig$ es el alfabeto, $\delta : Q \times \Sig \to Q$ es la función de
+transición, $q_0 \in Q$ es el estado inicial y $F \subseteq Q$ es el conjunto de estados
+de aceptación. $M$ acepta una cadena $w$ si, partiendo de $q_0$ y leyendo $w$ símbolo a
+símbolo, termina en un estado de $F$. El lenguaje de $M$, $\Lang(M)$, es el conjunto de
+cadenas que acepta~\cite{sipser, hmu}.
+\end{definicion}
+
+El autómata del analizador léxico es
+\[
+  M = (Q, \Sig, \delta, q_0, F), \qquad
+  Q = \{q_0, q_1, q_2, q_3, q_4, q_5, e_1, e_2\}, \qquad
+  F = \{q_1, q_2, q_4\},
+\]
+con $\delta$ dada por la figura~\ref{fig:afd} y la tabla~\ref{tab:delta}.
+
+\begin{figure}[ht]
+  \centering
+  \resizebox{\linewidth}{!}{\input{automata_diagrama.tex}}
+  \caption{AFD de identificadores y números. Doble círculo: estado de aceptación.
+    Línea discontinua: estado de error. $^{\dagger}$: solo si el punto va seguido de un
+    dígito (ver la sección~\ref{sec:anticipacion}).}
+  \label{fig:afd}
+\end{figure}
+
+\begin{table}[htbp]
+  \centering
+  \caption{Función de transición $\delta$. Una celda vacía (---) significa que no hay
+    transición: el lexema termina y se ejecuta la acción de la última columna.}
+  \label{tab:delta}
+  \begin{tabular}{c c c c c l}
+    \toprule
+    Estado & $L$ & $D$ & \pto & $O$ & Acción al terminar el lexema \\
+    \midrule
+    $\to q_0$  & $q_1$ & $q_2$ & ---              & --- & (no es identificador ni número) \\
+    $*\,q_1$   & $q_1$ & $q_1$ & ---              & --- & acepta \textsf{ID} o palabra reservada \\
+    $*\,q_2$   & $e_1$ & $q_2$ & $q_3$            & --- & acepta \textsf{NUM\_ENTERO} \\
+    $q_3$      & ---   & $q_4$ & ---              & --- & error: número mal formado (\lex{12.}) \\
+    $*\,q_4$   & $e_2$ & $q_4$ & $q_5$            & --- & acepta \textsf{NUM\_REAL} \\
+    $q_5$      & ---   & $e_2$ & ---              & --- & retrocede a $q_4$: \textsf{NUM\_REAL} \\
+    $e_1$      & $e_1$ & $e_1$ & $e_2^{\dagger}$  & --- & error: identificador empieza con dígito \\
+    $e_2$      & $e_2$ & $e_2$ & $e_2^{\dagger}$  & --- & error: número mal formado \\
+    \bottomrule
+  \end{tabular}
+
+  \smallskip
+  {\footnotesize $\to$ estado inicial \quad $*$ estado de aceptación}
+\end{table}
+
+\paragraph{Función de transición parcial.} Las celdas vacías hacen que $\delta$ sea
+\emph{parcial}. Para tener un AFD completo en el sentido estricto basta agregar un
+estado sumidero $q_\varnothing \notin F$ al que van todas las celdas vacías y que se
+transita a sí mismo con todo $\Sig$. Ese estado no cambia el lenguaje aceptado, porque
+desde él no se alcanza ningún estado de aceptación~\cite{hmu}.
+
+\paragraph{Estados de error.} $e_1$ y $e_2$ no pertenecen a $F$, así que no cambian
+$\Lang(M)$. Su función es práctica: consumen el lexema mal formado completo para
+reportar \emph{un solo} error (\lex{3abc} es un error, y no \lex{3} seguido de
+\lex{abc}).
+
+\subsection{Anticipación de un carácter}
+\label{sec:anticipacion}
+
+El estado $q_5$ y las transiciones marcadas con $^{\dagger}$ modelan la técnica habitual
+de los analizadores léxicos: leer hasta donde se pueda y, si el lexema no puede
+continuar, \emph{retroceder} al último estado de aceptación visitado~\cite{dragon}. En
+\lex{3.5.x}, el autómata pasa por $q_4$, lee el segundo punto y llega a $q_5$. Como
+\lex{x} no es un dígito, retrocede a $q_4$: emite \textsf{NUM\_REAL} \lex{3.5} y vuelve a
+analizar desde el punto. En el código, esto es la comprobación
+\verb|self.current() == "." and is_digit(self.peek())|.
+
+La única excepción deliberada es $q_3$. En \lex{12.} se podría retroceder a $q_2$ y emitir
+\lex{12}, pero el equipo decidió reportarlo como número mal formado porque casi siempre
+es un número incompleto.
+
+% ======================================================================
+\section{Trazas de ejemplo}
+
+\begin{center}
+\begin{tabular}{l l l}
+  \toprule
+  Entrada & Recorrido & Resultado \\
+  \midrule
+  \lex{x\_1}    & $q_0 \xrightarrow{x} q_1 \xrightarrow{\texttt{\_}} q_1 \xrightarrow{1} q_1$ & \textsf{ID} \\
+  \lex{si}      & $q_0 \xrightarrow{s} q_1 \xrightarrow{i} q_1$ & \textsf{ID} $\to$ palabra reservada \textsf{IF} \\
+  \lex{42}      & $q_0 \xrightarrow{4} q_2 \xrightarrow{2} q_2$ & \textsf{NUM\_ENTERO} \\
+  \lex{3.14}    & $q_0 \xrightarrow{3} q_2 \xrightarrow{\texttt{.}} q_3 \xrightarrow{1} q_4 \xrightarrow{4} q_4$ & \textsf{NUM\_REAL} \\
+  \lex{12.}     & $q_0 \xrightarrow{1} q_2 \xrightarrow{2} q_2 \xrightarrow{\texttt{.}} q_3$ & error: termina en $q_3 \notin F$ \\
+  \lex{3abc}    & $q_0 \xrightarrow{3} q_2 \xrightarrow{a} e_1 \xrightarrow{b} e_1 \xrightarrow{c} e_1$ & error: ID empieza con dígito \\
+  \lex{12.3.4}  & $q_0 \to q_2 \to q_2 \xrightarrow{\texttt{.}} q_3 \xrightarrow{3} q_4 \xrightarrow{\texttt{.}} q_5 \xrightarrow{4} e_2$ & error: número mal formado \\
+  \bottomrule
+\end{tabular}
+\end{center}
+
+% ======================================================================
+\section{Por qué el autómata define un lenguaje regular}
+
+\begin{definicion}[Lenguaje regular]
+Un lenguaje es \emph{regular} si existe un autómata finito que lo reconoce~\cite{sipser}.
+\end{definicion}
+
+\begin{teorema}[Kleene, 1956~\cite{kleene}]
+Un lenguaje es aceptado por un autómata finito si y solo si puede describirse con una
+expresión regular.
+\end{teorema}
+
+Kleene lo enunció en 1956 para los \emph{eventos regulares} de las redes neuronales de
+McCulloch y Pitts~\cite{kleene}. La forma actual del teorema viene de tres resultados:
+
+\begin{itemize}
+  \item \textbf{Rabin y Scott~\cite{rabinscott}:} los autómatas no deterministas no
+    reconocen más lenguajes que los deterministas (construcción de subconjuntos).
+  \item \textbf{McNaughton y Yamada~\cite{mcnaughton}:} algoritmos explícitos para
+    convertir entre expresiones regulares y diagramas de estados.
+  \item \textbf{Thompson~\cite{thompson}:} una construcción de expresión regular a
+    autómata que se sigue usando en los generadores de analizadores léxicos.
+\end{itemize}
+
+Los libros de texto lo presentan como la equivalencia entre AFD, AFN y expresiones
+regulares: \cite[teorema~1.54]{sipser}, \cite[sección~3.2]{hmu} y \cite[secciones~3.6--3.7]{dragon}.
+
+\subsection{Aplicación a nuestros tokens}
+
+Para cada estado de aceptación $q \in F$ sea $\Lang_q(M)$ el conjunto de cadenas que
+llevan a $M$ de $q_0$ a $q$. Cada $\Lang_q(M)$ es el lenguaje de un autómata finito: el
+mismo $M$ con $F = \{q\}$.
+
+\begin{corolario}
+$\Lang_{q_1}(M)$, $\Lang_{q_2}(M)$ y $\Lang_{q_4}(M)$ son lenguajes regulares.
+\end{corolario}
+
+\begin{proof}
+Cada uno es reconocido por un autómata finito ($M$ tiene 8 estados). Por la definición de
+lenguaje regular, los tres lo son. El teorema de Kleene garantiza además que cada uno
+tiene una expresión regular equivalente.
+\end{proof}
+
+\paragraph{Verificación: del autómata a la expresión regular.} El teorema dice que la
+expresión regular existe. Para nuestro autómata se puede obtener a mano eliminando
+estados~\cite[sección~3.2.2]{hmu}. Hay que seguir los caminos de $q_0$ a cada estado de
+aceptación, donde un lazo se convierte en una estrella de Kleene:
+
+\begin{align*}
+  \Lang_{q_1}(M) &= L\,(L \mid D)^{*}
+     && \text{($q_0 \xrightarrow{L} q_1$ y el lazo $L, D$ en $q_1$)} \\
+  \Lang_{q_2}(M) &= D\,D^{*} = D^{+}
+     && \text{($q_0 \xrightarrow{D} q_2$ y el lazo $D$ en $q_2$)} \\
+  \Lang_{q_4}(M) &= D^{+}\,\pto\,D\,D^{*} = D^{+}\,\pto\,D^{+}
+     && \text{(el camino $q_0 \to q_2 \to q_3 \to q_4$ con sus lazos)}
+\end{align*}
+
+Son exactamente las expresiones regulares de \textsf{ID}, \textsf{NUM\_ENTERO} y
+\textsf{NUM\_REAL} en \nolinkurl{docs/especificacion_tokens.md}. En nuestro caso, las dos
+direcciones del teorema (\emph{autómata $\Rightarrow$ expresión regular} y \emph{expresión
+regular $\Rightarrow$ autómata}) llevan al mismo resultado. La prueba
+\nolinkurl{tests/test_token_spec.py} verifica lo mismo de forma ejecutable: compara el
+analizador léxico, que implementa el autómata, con un tokenizador hecho solo con las
+expresiones regulares (\texttt{TOKEN\_PATTERNS} en \nolinkurl{compiler/tokens.py}).
+
+\subsection{Palabras reservadas y el resto de los tokens}
+
+\begin{itemize}
+  \item \textbf{Palabras reservadas.} El conjunto $K = \{\lex{entero}, \lex{real},
+    \dots, \lex{falso}\}$ tiene 9 cadenas. Todo lenguaje finito es regular. Los
+    lenguajes regulares son cerrados bajo complemento e intersección, y por lo tanto bajo
+    diferencia~\cite[sección~4.2]{hmu}. Entonces $\Lang(\textsf{ID}) = \Lang_{q_1}(M)
+    \setminus K$ también es regular. En el código, esta diferencia es la búsqueda en la
+    tabla \texttt{KEYWORDS} después de reconocer el lexema en $q_1$.
+  \item \textbf{Operadores, delimitadores, espacios y comentarios.} Cada uno se describe
+    con una expresión regular, así que también son regulares.
+  \item \textbf{Todos los tokens juntos.} Los lenguajes regulares son cerrados bajo
+    unión, de modo que el lenguaje de todos los tokens es regular. Por eso un único
+    autómata finito (el analizador léxico) basta para reconocerlos.
+\end{itemize}
+
+\subsection{Lo que un autómata finito no puede hacer}
+
+El autómata tiene un número fijo de estados, es decir, \emph{memoria finita}: no puede
+contar sin límite. Por eso no puede verificar que los paréntesis $\lex{(}^n\lex{)}^n$
+estén balanceados para todo $n$, ni que una variable usada haya sido declarada antes.
+El primer problema requiere una gramática libre de contexto (tipo~2) y el segundo va más
+allá de ellas~\cite{chomsky56, chomsky59}. Esa es la jerarquía que sigue el compilador:
+el analizador léxico es de tipo~3, la sintaxis es de tipo~2 y el análisis semántico
+necesita una tabla de símbolos (ver \nolinkurl{docs/reflexion.md}).
+
+% ======================================================================
+\begin{thebibliography}{9}
+
+\bibitem{kleene}
+S.~C. Kleene.
+\newblock Representation of events in nerve nets and finite automata.
+\newblock En C.~E. Shannon y J.~McCarthy (eds.), \emph{Automata Studies}, Annals of
+  Mathematics Studies~34, pp.~3--41. Princeton University Press, 1956.
+
+\bibitem{rabinscott}
+M.~O. Rabin y D.~Scott.
+\newblock Finite automata and their decision problems.
+\newblock \emph{IBM Journal of Research and Development}, 3(2):114--125, 1959.
+
+\bibitem{mcnaughton}
+R.~McNaughton y H.~Yamada.
+\newblock Regular expressions and state graphs for automata.
+\newblock \emph{IRE Transactions on Electronic Computers}, EC-9(1):39--47, 1960.
+
+\bibitem{thompson}
+K.~Thompson.
+\newblock Regular expression search algorithm.
+\newblock \emph{Communications of the ACM}, 11(6):419--422, 1968.
+
+\bibitem{chomsky56}
+N.~Chomsky.
+\newblock Three models for the description of language.
+\newblock \emph{IRE Transactions on Information Theory}, 2(3):113--124, 1956.
+
+\bibitem{chomsky59}
+N.~Chomsky.
+\newblock On certain formal properties of grammars.
+\newblock \emph{Information and Control}, 2(2):137--167, 1959.
+
+\bibitem{hmu}
+J.~E. Hopcroft, R.~Motwani y J.~D. Ullman.
+\newblock \emph{Introduction to Automata Theory, Languages, and Computation}.
+\newblock 3.\textsuperscript{a} ed. Addison-Wesley, 2006.
+
+\bibitem{sipser}
+M.~Sipser.
+\newblock \emph{Introduction to the Theory of Computation}.
+\newblock 3.\textsuperscript{a} ed. Cengage Learning, 2013.
+
+\bibitem{dragon}
+A.~V. Aho, M.~S. Lam, R.~Sethi y J.~D. Ullman.
+\newblock \emph{Compilers: Principles, Techniques, and Tools}.
+\newblock 2.\textsuperscript{a} ed. Addison-Wesley, 2006.
+
+\end{thebibliography}
+
+\end{document}
