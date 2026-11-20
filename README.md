@@ -3,8 +3,10 @@
 **Integrantes:**
 
 * Pablo Vides 00080323
+* Gabriela Valiente
+* Valeria Ortiz
+* Paola Pérez Pérez 00117222
 * Alejandro Melgar
-* Gabriela
 
 Lexer y analizador semántico en Python para un lenguaje propio estilo C con
 palabras clave en español. Los programas fuente usan la extensión `.esp`.
@@ -21,12 +23,24 @@ si (x > 0) {
 
 ## Requisitos e instalación
 
-- Python 3.10 o superior.
+- Python 3.10 o superior (se usa `match` y la sintaxis `X | None`).
+- Git.
 
 ```bash
+git clone https://github.com/Pabloo-04/c_es_compiler.git
+cd c_es_compiler
+git checkout develop               # rama con el trabajo integrado
+
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt
+pip install -r requirements.txt     # solo pytest; el compilador no tiene dependencias
+```
+
+Para comprobar que todo quedó bien instalado:
+
+```bash
+pytest -q                          # deben pasar todas las pruebas
+python main.py examples/valid.esp  # "Programa correcto: sin errores léxicos ni semánticos."
 ```
 
 ## Uso
