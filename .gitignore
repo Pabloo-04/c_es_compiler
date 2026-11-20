@@ -9,3 +9,11 @@ venv/
 # Video y material pesado: no subir al repo
 *.mp4
 *.mov
+# LaTeX: archivos auxiliares (los PDF finales sí se suben)
+*.aux
+*.log
+*.out
+*.toc
+*.fls
+*.fdb_latexmk
+*.synctex.gz

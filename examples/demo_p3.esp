@@ -1,0 +1,11 @@
+entero x = 1;
+si (verdadero) {
+    real x = 2.5;        // shadowing: permitido, solo advertencia
+    entero z = 5;
+    imprimir(x);
+    imprimir(z);
+}
+imprimir(x);             // vuelve a ser la x entera
+entero x = 3;            // ERROR: redeclaración en el mismo ámbito
+z = 7;                   // ERROR: z solo existía dentro del bloque
+y = 4;                   // ERROR: y nunca fue declarada
