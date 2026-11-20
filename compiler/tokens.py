@@ -1,9 +1,3 @@
-"""Shared contract between the lexer (P2) and the semantic analyzer (P3 and P4).
-
-This file is agreed on DAY 1. If anyone needs to change it, tell the whole
-team first, because it breaks everyone else's work.
-"""
-
 import re
 from dataclasses import dataclass
 from enum import Enum, auto
