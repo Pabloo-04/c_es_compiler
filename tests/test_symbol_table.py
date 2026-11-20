@@ -49,5 +49,63 @@ def test_depth():
     assert table.depth == 1
 
 
-# TODO(P5): three levels of nested scopes.
-# TODO(P5): closing the global scope must not break the table.
+def test_three_levels_of_nested_scopes():
+    table = SymbolTable()
+    table.declare(sym("x", "entero"))
+    table.declare(sym("g", "bool"))
+    table.open_scope()
+    table.declare(sym("x", "real"))
+    table.open_scope()
+    table.declare(sym("x", "bool"))
+    assert table.depth == 2
+    assert table.lookup("x").type == "bool"
+    assert table.lookup("g").type == "bool"   # global still visible from depth 2
+    table.close_scope()
+    assert table.lookup("x").type == "real"
+    table.close_scope()
+    assert table.lookup("x").type == "entero"
+    assert table.depth == 0
+
+
+def test_closing_the_global_scope_does_nothing():
+    table = SymbolTable()
+    table.declare(sym("x"))
+    assert table.close_scope() is None
+    assert table.depth == 0
+    assert table.lookup("x") is not None
+    # The table still works afterwards.
+    table.open_scope()
+    assert table.depth == 1
+
+
+def test_close_scope_returns_its_symbols_in_order():
+    table = SymbolTable()
+    table.open_scope()
+    table.declare(sym("b"))
+    table.declare(sym("a"))
+    assert [s.name for s in table.close_scope()] == ["b", "a"]
+
+
+def test_redeclaration_keeps_the_first_symbol():
+    table = SymbolTable()
+    table.declare(sym("x", "entero", line=1))
+    table.declare(sym("x", "real", line=2))
+    assert table.lookup("x").type == "entero"
+
+
+def test_redeclaration_only_checks_current_scope():
+    table = SymbolTable()
+    table.open_scope()
+    table.declare(sym("x"))
+    table.close_scope()
+    # The inner x is gone, so declaring it in the global scope is fine.
+    assert table.declare(sym("x")) is None
+
+
+def test_lookup_returns_the_same_object():
+    # semantic.py marks symbol.used = True on the object lookup() returns.
+    table = SymbolTable()
+    s = sym("x")
+    table.declare(s)
+    table.lookup("x").used = True
+    assert s.used is True
