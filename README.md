@@ -53,8 +53,7 @@ Línea 4, columna 8: variable 'y' ya declarada en este ámbito (línea 3)
 si fueron inicializadas y usadas; los ámbitos internos aparecen indentados para que
 se vea el shadowing.
 
-Si hay errores léxicos no se corre el semántico. Mientras el semántico no esté
-implementado, `main.py` lo avisa y muestra igual el resultado del lexer.
+Si hay errores léxicos no se corre el semántico.
 
 Código de salida: `0` sin errores (puede haber advertencias), `1` con errores y `2`
 si no se pudo leer el archivo.
@@ -62,44 +61,42 @@ si no se pudo leer el archivo.
 ## Pruebas
 
 ```bash
-pytest            # todas
-pytest -v tests/test_lexer.py
+pytest                          # todas
+pytest -v tests/test_lexer.py   # un archivo
 ```
 
-> Al principio casi todas las pruebas fallan con `NotImplementedError`, y es lo
-> esperado: describen el comportamiento que falta implementar. Cada uno sabe que
-> terminó su parte cuando sus pruebas pasan.
+| Archivo | Qué prueba |
+| --- | --- |
+| `test_lexer.py` | Tokens válidos, posiciones, comentarios y errores léxicos |
+| `test_token_spec.py` | Que el lexer coincide con la definición formal por expresiones regulares |
+| `test_errors.py` | El formato único de errores y advertencias |
+| `test_symbol_table.py` | Declaración, búsqueda, redeclaración y shadowing |
+| `test_semantic.py` | Variables no declaradas, ámbitos y reglas de tipos |
 
 ## Estructura del proyecto
 
 ```
 c_compiler/
-├── main.py                    # CLI (listo)
+├── main.py                    # punto de entrada (CLI)
 ├── compiler/
-│   ├── tokens.py              # Token y TokenType: contrato compartido (listo)
-│   ├── errors.py              # errores y advertencias: formato común (listo)
-│   ├── lexer.py               # P2
-│   ├── symbol_table.py        # P3
-│   ├── statements.py          # P4: agrupar tokens en sentencias
-│   ├── type_rules.py          # P4: reglas de tipos
-│   └── semantic.py            # P3 + P4: orquesta el análisis
-├── tests/
-│   ├── helpers.py             # tokens_by_hand(): tokens sin depender del lexer
-│   ├── test_errors.py
-│   ├── test_lexer.py
-│   ├── test_token_spec.py
-│   ├── test_symbol_table.py
-│   └── test_semantic.py
-├── examples/                  # programas .esp para las demos
+│   ├── tokens.py              # Token, TokenType y definición formal de tokens (regex)
+│   ├── errors.py              # errores y advertencias con formato único
+│   ├── lexer.py               # analizador léxico
+│   ├── symbol_table.py        # tabla de símbolos (pila de ámbitos)
+│   ├── statements.py          # agrupación de tokens en sentencias
+│   ├── type_rules.py          # reglas de tipos
+│   └── semantic.py            # analizador semántico
+├── tests/                     # pruebas con pytest
+├── examples/                  # programas de ejemplo (.esp)
 └── docs/
-    ├── especificacion_tokens.md   # P1
-    ├── gramatica.md               # gramática en BNF y EBNF
-    ├── automata.md                # P1
-    ├── reflexion.md               # P1
-    └── guion_video.md             # P1
+    ├── especificacion_tokens.md   # alfabeto, tokens, desambiguación y errores léxicos
+    ├── gramatica.md               # gramática léxica y sintáctica en BNF y EBNF
+    ├── automata.md                # autómata finito de identificadores y números
+    ├── latex/automata.pdf         # autómata formal y teorema de Kleene (fuente .tex)
+    ├── img/automata.png           # diagrama del autómata
+    ├── reflexion.md
+    └── guion_video.md
 ```
-
-Para encontrar lo que falta: `grep -rn "TODO(P3)" .` (o el número de cada persona).
 
 ## Diseño
 
@@ -108,12 +105,12 @@ Para encontrar lo que falta: `grep -rn "TODO(P3)" .` (o el número de cada perso
 ```
 código fuente ──► lexer.tokenize() ──► list[Token] ──► semantic.analyze() ──► list[CompileError]
                         │                                   │
-                        └─► errores léxicos                 ├─ statements.group()             (P4)
-                                                            ├─ SymbolTable                    (P3)
-                                                            └─ type_rules.expression_type()   (P4)
+                        └─► errores léxicos                 ├─ statements.group()
+                                                            ├─ SymbolTable
+                                                            └─ type_rules.expression_type()
 ```
 
-### Contrato `Token` (acordado el día 1)
+### Token
 
 ```python
 @dataclass(frozen=True)
@@ -124,7 +121,7 @@ class Token:
     column: int       # desde 1, primer carácter del lexema
 ```
 
-El lexer siempre termina la lista con un token `EOF`. **No cambiar `tokens.py` sin avisar a todo el equipo.**
+El lexer siempre termina la lista con un token `EOF`.
 
 ### Errores y advertencias
 
@@ -144,8 +141,8 @@ Línea 7, columna 3: variable 'y' no declarada
 `LexicalError` y `SemanticError` heredan de `CompileError`. `error.labeled()` agrega
 el tipo adelante (`[error semántico] Línea 7, columna 3: ...`).
 
-Advertencias previstas (TODO de P3 en `semantic.py`): variable sin usar, shadowing
-y uso sin inicializar. Si hay errores léxicos, `main.py` no corre el semántico.
+Advertencias: variable declarada pero nunca usada, shadowing de una variable de un ámbito
+externo y uso de una variable sin inicializar.
 
 ### Sentencias
 
@@ -156,17 +153,14 @@ orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
 
 ### Tipos
 
-
-| Operación                           | Resultado      |
-| ------------------------------------ | -------------- |
-| `entero + entero` (también `- * /`) | `entero`       |
-| `entero + real`, `real + real`       | `real`         |
-| `< > <= >=` entre números           | `bool`         |
-| `== !=`                              | `bool`         |
-| `&& ||` entre `bool`, `!bool`        | `bool`         |
-| condición de`si` / `mientras`       | debe ser`bool` |
-
-<!-- TODO(P4): confirmar la tabla y decidir si `real x = 5;` es válido. -->
+| Operación | Resultado |
+| --- | --- |
+| `entero + entero` (también `- * /`) | `entero` |
+| `entero + real`, `real + real` | `real` |
+| `< > <= >=` entre números | `bool` |
+| `== !=` | `bool` |
+| `&& \|\|` entre `bool`, `!bool` | `bool` |
+| condición de `si` / `mientras` | debe ser `bool` |
 
 ## El lenguaje
 
@@ -344,53 +338,6 @@ contexto.
 - Sipser, M. (2013). *Introduction to the Theory of Computation* (3.ª ed.). Cengage
   Learning. Sección 2.3: lenguajes que no son libres de contexto.
 
-## Equipo y responsabilidades
-
-<!-- TODO: reemplazar "Persona N" por los nombres. -->
-
-
-| Persona   | Responsabilidad                                         | Archivos                                                                          |
-| --------- | ------------------------------------------------------- | --------------------------------------------------------------------------------- |
-| Persona 1 | Especificación, autómata, reflexión, guion del video | `docs/`                                                                           |
-| Persona 2 | Lexer                                                   | `compiler/lexer.py`                                                               |
-| Persona 3 | Tabla de símbolos y ámbitos                           | `compiler/symbol_table.py`, secciones P3 de `semantic.py`                         |
-| Persona 4 | Sentencias y reglas de tipos                            | `compiler/statements.py`, `compiler/type_rules.py`, secciones P4 de `semantic.py` |
-| Persona 5 | Pruebas, repositorio, README, edición del video        | `tests/`, `README.md`                                                             |
-
-### Cronograma
-
-
-| Día | P1                                    | P2                             | P3                               | P4                             | P5                            |
-| ---- | ------------------------------------- | ------------------------------ | -------------------------------- | ------------------------------ | ----------------------------- |
-| 1    | Tabla de tokens final                 | Esqueleto del lexer            | Diseño de la tabla de símbolos | Diseño de las reglas de tipos | Repositorio y pytest          |
-| 2    | Autómata y borrador de la reflexión | Lexer completo                 | Pila de ámbitos y declaraciones | Agrupación de sentencias      | Pruebas del lexer             |
-| 3    | Reflexión terminada                  | Errores léxicos y comentarios | No declaradas y shadowing        | Reglas de tipos                | Pruebas del semántico        |
-| 4    | Guion del video                       | Apoyo a la integración        | Integración con P4              | Integración con P3            | Correr todo y reportar fallos |
-| 5    | Programas de ejemplo                  | Corrección de errores         | Corrección de errores           | Corrección de errores         | README final                  |
-| 6    | Grabación                            | Grabación                     | Grabación                       | Grabación                     | Primer corte del video        |
-| 7    | Revisión y entrega                   | Revisar el video               | Revisar el video                 | Revisar el video               | Subir el video                |
-
-**Hitos:** lexer completo el día 3; flujo lexer → semántico el día 4.
-
-### Cómo trabajar sin bloquearse
-
-Mientras el lexer no esté listo, P3 y P4 prueban con tokens escritos a mano:
-
-```python
-from helpers import tokens_by_hand
-tokens = tokens_by_hand("""
-entero x = 1 ;
-si ( x > 0 ) {
-    real x = 2.5 ;
-}
-""")
-```
-
-Flujo de Git sugerido: una rama por persona (`lexer`, `tabla-simbolos`, `tipos`, `docs`, `tests`),
-pull request a `main` y `pytest` antes de cada merge.
-
 ## Video
 
-<!-- TODO(P5): enlace al video final. -->
-
-Guion y tiempos en [docs/guion_video.md](docs/guion_video.md).
+Enlace al video: *(pendiente)*
