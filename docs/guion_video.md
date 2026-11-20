@@ -100,7 +100,56 @@ pytest -v                                # P5
 
 ## 4. Reflexión (P1, 1:00)
 
-<!-- TODO(P1): versión hablada y resumida de docs/reflexion.md. -->
+Unas 160 palabras, alrededor de 1:00. Es la versión hablada de la sección "Reflexión"
+del [README](../README.md#reflexión). La demostración completa con el lema de bombeo
+queda en el README; aquí solo se da la idea.
+
+### Bloque 1: la jerarquía (0:00–0:15)
+
+> **En pantalla:** la tabla "Cada fase, un nivel de la jerarquía de Chomsky" del README.
+
+"Para cerrar: ¿por qué hace falta un analizador semántico? Cada fase corresponde a un
+nivel de la jerarquía de Chomsky. Los tokens son regulares: basta un autómata finito. Las
+llaves anidadas son libres de contexto: necesitan una pila."
+
+### Bloque 2: lo que la CFG no puede ver (0:15–0:30)
+
+> **En pantalla:** [examples/semantic_errors.esp](../examples/semantic_errors.esp),
+> señalando `z = 3;`.
+
+"Pero este programa respeta la gramática y aun así está mal: usa `z` sin declararla. Para
+detectarlo hay que comparar el nombre usado con uno escrito antes, a cualquier distancia."
+
+### Bloque 3: el argumento formal (0:30–0:45)
+
+> **En pantalla:** "L = { w c w }" y el ejemplo `entero abba; imprimir(abba);`.
+
+"Formalmente, 'declarar antes de usar' tiene la forma w c w: el mismo nombre dos veces,
+con código en el medio. Con el lema de bombeo se demuestra que w c w no es libre de
+contexto. Por lo tanto, ninguna gramática libre de contexto puede expresar esta regla."
+
+### Bloque 4: la solución y el cierre (0:45–1:00)
+
+> **En pantalla:** la terminal.
+
+```bash
+python main.py examples/semantic_errors.esp
+```
+
+"Por eso usamos una tabla de símbolos, que guarda cada nombre con su tipo y su ámbito.
+El español tiene un problema parecido: en 'el perro negro' las palabras deben concordar.
+Ese es el punto de partida de la Fase 2. Gracias."
+
+### Notas para grabar
+
+- El bloque 4 necesita el semántico de P3 y P4 terminado. Si no está listo para la
+  grabación, mostrar la tabla de símbolos con `--simbolos` sobre
+  [examples/scopes.esp](../examples/scopes.esp) en cuanto funcione, o grabar esta parte
+  al final.
+- No leer la demostración del lema de bombeo en voz alta: no entra en un minuto. Basta
+  decir que existe y que está en el README.
+- La palabra clave del segmento es "comparar": el autómata y la pila no pueden comparar
+  dos nombres arbitrariamente largos; la tabla de símbolos sí.
 
 ## Checklist de grabación
 

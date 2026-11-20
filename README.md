@@ -199,9 +199,150 @@ No hay funciones en esta fase: los bloques de `si` y `mientras` bastan para demo
 
 ## Reflexión
 
-<!-- TODO(P5): integrar aquí el texto final de docs/reflexion.md (Persona 1). -->
+**¿Qué verificaciones del analizador semántico no puede expresar una gramática libre de
+contexto, y por qué?**
 
-*Pendiente. Borrador en [docs/reflexion.md](docs/reflexion.md).*
+### 1. Cada fase, un nivel de la jerarquía de Chomsky
+
+| Fase | Tipo de lenguaje | Reconocedor | Qué necesita recordar |
+| --- | --- | --- | --- |
+| Lexer | Regular (tipo 3) | Autómata finito | Nada más que el estado actual (memoria finita) |
+| Sintaxis | Libre de contexto (tipo 2) | Autómata de pila | Una pila: qué llaves y paréntesis siguen abiertos |
+| Semántico | Más allá de libre de contexto | Tabla de símbolos | Todos los nombres declarados, con su tipo y su ámbito |
+
+- **Los tokens son regulares.** Cada token se define con una expresión regular, y por el
+  teorema de Kleene lo reconoce un autómata finito
+  (ver [docs/latex/automata.pdf](docs/latex/automata.pdf)).
+- **La sintaxis ya no es regular.** Los bloques anidados `{ { } }` tienen la forma
+  { `{`ⁿ `}`ⁿ }, que exige contar sin límite. Un autómata finito no puede hacerlo; uno
+  con una pila sí: apila cada `{` y desapila cada `}`. Eso es exactamente una gramática
+  libre de contexto ([docs/gramatica.md](docs/gramatica.md)).
+- **El semántico va un paso más allá.** Ya no basta con saber cuántas llaves hay
+  abiertas: hay que recordar *qué nombres* se declararon. Una pila solo deja ver el
+  elemento de arriba, y eso no alcanza para compararlos.
+
+### 2. Lo que la CFG acepta y el semántico rechaza
+
+Todas estas líneas de [examples/semantic_errors.esp](examples/semantic_errors.esp) son
+**sintácticamente correctas**: se derivan de la gramática. Aun así, el programa es
+inválido.
+
+| Verificación | Ejemplo | Por qué la CFG no la expresa |
+| --- | --- | --- |
+| Declaración antes del uso | `z = 3;` sin `entero z;` antes | La regla `<asignacion> ::= ID "=" <expresion> ";"` acepta cualquier `ID`. Saber si `z` se declaró exige comparar este nombre con uno escrito antes, a distancia arbitraria. |
+| Sin redeclaración en un ámbito | `entero y = 1;` … `entero y = 2;` | Hay que comparar cada nombre nuevo con *todos* los del mismo ámbito. |
+| Ámbitos | `w = 2;` después de cerrar el bloque donde se declaró `w` | La CFG sabe que las llaves están balanceadas, pero no a qué declaración se refiere cada nombre. |
+| Tipos en la asignación | `entero x = verdadero;` | Ver el matiz que sigue. |
+| Condiciones `bool` | `si (y) { ... }` con `entero y` | El tipo de `y` está en su declaración, no en la condición. |
+
+**Un matiz sobre los tipos.** Una CFG *sí* podría rechazar `entero x = verdadero;`.
+Como hay solo tres tipos, se puede dividir `<expresion>` en `<expr_entero>`,
+`<expr_real>` y `<expr_bool>` y escribir `<declaracion> ::= "entero" ID "=" <expr_entero>
+";"`. La gramática crece, pero sigue siendo libre de contexto. El problema aparece cuando
+la expresión usa una variable: en `si (y)` o en `x + 1`, el tipo depende de una
+declaración que está en otra parte del programa. Es el mismo problema que el de declarar
+antes de usar.
+
+### 3. El argumento formal: el lenguaje { *wcw* }
+
+"Toda variable usada debe estar declarada" tiene la misma estructura que
+
+> L = { *w* c *w* | *w* ∈ {a, b}\* }
+
+En un programa, la primera *w* es el nombre en la declaración (`entero abba;`), `c` es
+el código intermedio y la segunda *w* es el uso (`abba = 1;`). El programa es válido
+solo si las dos *w* son **idénticas**, y pueden ser arbitrariamente largas.
+
+**L no es libre de contexto.** Se demuestra con el lema de bombeo para lenguajes libres
+de contexto (Bar-Hillel, Perles y Shamir, 1961). Supongamos que L fuera libre de
+contexto, con longitud de bombeo *p*. Tomemos
+
+> s = aᵖ bᵖ c aᵖ bᵖ ∈ L
+
+El lema garantiza que s = uvxyz, con |vxy| ≤ *p* y |vy| ≥ 1, de modo que u vⁱ x yⁱ z ∈ L
+para todo i ≥ 0. Tomemos i = 0, es decir, quitemos v e y:
+
+1. **Si v o y contienen la `c`**, la cadena resultante no tiene `c` y no está en L.
+2. **Si vxy está entero a un lado de la `c`**, ese lado se acorta y el otro no. Las dos
+   mitades quedan de distinto largo y la cadena no está en L.
+3. **Si vxy cruza la `c` sin contenerla**, como |vxy| ≤ *p*, v solo puede tocar las b de
+   la izquierda e y solo las a de la derecha. Al quitarlas, la izquierda queda con menos
+   b o la derecha con menos a, y las mitades dejan de ser iguales.
+
+En los tres casos se llega a una contradicción, así que L no es libre de contexto.
+
+**De { *wcw* } a los programas.** Sea P el lenguaje de los programas válidos y
+supongamos que fuera libre de contexto. Su intersección con el lenguaje regular
+
+> R = `entero␣` [ab]⁺ `;imprimir(` [ab]⁺ `);`
+
+también lo sería, porque la intersección de un lenguaje libre de contexto con uno regular
+es libre de contexto. Como un programa de R es válido solo si declara la misma variable
+que imprime, la intersección es
+
+> P ∩ R = { `entero␣`*w*`;imprimir(`*w*`);` | *w* ∈ {a, b}⁺ }
+
+Ahora aplicamos el homomorfismo *h* que convierte `(` en `c` y borra todos los demás
+símbolos que no son a ni b. Las palabras `entero` e `imprimir` no tienen ninguna a ni b,
+así que *h*(P ∩ R) = { *wcw* | *w* ∈ {a, b}⁺ }. Los lenguajes libres de contexto son
+cerrados bajo homomorfismos, así que este lenguaje también sería libre de contexto. Pero
+la demostración anterior funciona igual con *w* no vacía (la cadena *s* elegida tiene
+*w* = aᵖbᵖ). Contradicción. Por lo tanto, **ninguna CFG puede describir exactamente los
+programas en que toda variable usada fue declarada**.
+
+{ *wcw* } sí es **sensible al contexto** (tipo 1): lo reconoce un autómata linealmente
+acotado, que puede recorrer la cinta de ida y vuelta para comparar las dos mitades.
+
+### 4. Por eso existe la tabla de símbolos
+
+Ningún compilador real escribe una gramática sensible al contexto: sería enorme e
+ineficiente. La solución estándar divide el trabajo:
+
+- **Una CFG para la estructura.** En nuestro caso, `statements.py` agrupa los tokens y
+  reconoce los bloques.
+- **Una estructura de datos para el contexto.** Es la tabla de símbolos de
+  [compiler/symbol_table.py](compiler/symbol_table.py). Recuerda cada nombre con su tipo:
+  `declare()` registra la primera *w* y `lookup()` la compara con la segunda.
+- **La pila de ámbitos** refleja el anidamiento de las llaves, que es la parte libre de
+  contexto. Los diccionarios de cada ámbito guardan los nombres, que es la parte que la
+  CFG no puede ver.
+
+La formalización de este enfoque son las **gramáticas de atributos** (Knuth, 1968): una
+CFG cuyas reglas además calculan y verifican información como tipos y nombres declarados.
+
+### 5. Puente a la Fase 2: la concordancia en español
+
+El español tiene el mismo tipo de restricción entre palabras:
+
+> *el perro negro* ✓  ·  \**la perros negro* ✗
+
+El artículo, el sustantivo y el adjetivo deben concordar en género y número. Como esos
+rasgos son finitos, una CFG puede manejarlos multiplicando las reglas (`<SN_masc_sing>`,
+`<SN_fem_plur>`, …), igual que podía con los tipos de los literales. Pero la gramática
+crece rápido, y la concordancia entre palabras alejadas tiene el mismo problema que las
+variables declaradas lejos de su uso. Shieber (1985) demostró que el suizo alemán tiene
+dependencias cruzadas que ninguna CFG puede describir. En la Fase 2 volveremos a usar la
+misma idea: una gramática para la estructura y algo más (rasgos o atributos) para el
+contexto.
+
+### Referencias
+
+- Bar-Hillel, Y., Perles, M. y Shamir, E. (1961). On formal properties of simple phrase
+  structure grammars. *Zeitschrift für Phonetik, Sprachwissenschaft und
+  Kommunikationsforschung*, 14, 143–172.
+- Chomsky, N. (1956). Three models for the description of language. *IRE Transactions on
+  Information Theory*, 2(3), 113–124.
+- Chomsky, N. (1959). On certain formal properties of grammars. *Information and
+  Control*, 2(2), 137–167.
+- Hopcroft, J. E., Motwani, R. y Ullman, J. D. (2006). *Introduction to Automata Theory,
+  Languages, and Computation* (3.ª ed.). Addison-Wesley. Cap. 7: lema de bombeo y
+  propiedades de cierre de los lenguajes libres de contexto.
+- Knuth, D. E. (1968). Semantics of context-free languages. *Mathematical Systems
+  Theory*, 2(2), 127–145.
+- Shieber, S. M. (1985). Evidence against the context-freeness of natural language.
+  *Linguistics and Philosophy*, 8(3), 333–343.
+- Sipser, M. (2013). *Introduction to the Theory of Computation* (3.ª ed.). Cengage
+  Learning. Sección 2.3: lenguajes que no son libres de contexto.
 
 ## Equipo y responsabilidades
 
