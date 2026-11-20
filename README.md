@@ -3,10 +3,10 @@
 **Integrantes:**
 
 * Pablo Vides 00080323
-* Gabriela Valiente
-* Valeria Ortiz
+* Gabriela Valiente 00010122
+* Valeria Ortiz 00206022
 * Paola Pérez Pérez 00117222
-* Alejandro Melgar
+* Alejandro Melgar 00026222
 
 Lexer y analizador semántico en Python para un lenguaje propio estilo C con
 palabras clave en español. Los programas fuente usan la extensión `.esp`.

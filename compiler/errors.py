@@ -1,24 +1,3 @@
-"""Diagnostics (errors and warnings) shared by every phase.
-
-Team decision: phases do NOT stop at the first error. They collect every
-diagnostic in a list and keep analyzing.
-
-Every diagnostic prints with ONE format (in Spanish, as the assignment asks):
-    "Línea 7, columna 3: variable 'y' no declarada"
-
-Hierarchy:
-    Diagnostic
-    ├── CompileError          (stops compilation)
-    │   ├── LexicalError
-    │   └── SemanticError
-    └── CompileWarning        (reported, but the program is still valid)
-
-Usage:
-    LexicalError(line, column, "carácter inválido '@'")
-    SemanticError(line, column, "variable 'y' no declarada")
-    CompileWarning(line, column, "variable 'x' declarada pero nunca usada")
-"""
-
 from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import ClassVar

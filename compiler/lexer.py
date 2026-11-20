@@ -1,29 +1,3 @@
-"""Lexical analyzer.  Owner: Person 2.
-
-Input:  the source code as a string.
-Output: (tokens, errors)
-  - tokens: list of Token, ALWAYS ending with an EOF token.
-  - errors: list of LexicalError (empty if all is fine).
-
-Rules (see docs/especificacion_tokens.md):
-  - Whitespace and comments (// and /* */) are skipped.
-  - Keywords are recognized AFTER reading a full identifier
-    (look the lexeme up in KEYWORDS).
-  - On an error, report it and keep going (do not raise).
-
-Lexical errors to report (messages in Spanish):
-  - Invalid character, e.g. "@", "#", "$", or a lone "&" / "|".
-  - Malformed number: "12.3.4"
-  - Identifier starting with a digit: "3abc"
-  - Unterminated block comment: "/* ..." up to end of file.
-
-Team decisions implemented here (confirm with P1 so the docs match):
-  - "12." (a dot with no digits after it) is a malformed number.
-  - ".5" is NOT a number: "." is an invalid character and then 5 is read.
-  - Letters are ASCII only ([a-zA-Z_]), as in docs/especificacion_tokens.md.
-  - A malformed lexeme is consumed whole and reported with ONE error.
-"""
-
 from .errors import CompileError, LexicalError
 from .tokens import (
     DELIMITERS,
