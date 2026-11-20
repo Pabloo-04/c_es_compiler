@@ -1,0 +1,51 @@
+% Diagrama del AFD de identificadores y números.
+% Lo usan automata.tex (documento) y automata_figura.tex (imagen para el video).
+% Requiere: \usetikzlibrary{automata, arrows.meta, positioning}
+%
+% Clases de caracteres:  L = [a-zA-Z_]   D = [0-9]   '.' = punto
+% (dagger) = solo si el punto va seguido de un dígito (un carácter de anticipación)
+\begin{tikzpicture}[
+    ->, >={Stealth[length=2.6mm]}, shorten >=1pt, auto, semithick,
+    every state/.style={minimum size=11mm, inner sep=1pt, font=\normalsize},
+    ok/.style={state, accepting, fill=green!10},
+    neutral/.style={state, fill=gray!8},
+    error/.style={state, draw=red!70!black, fill=red!10, dashed},
+    lbl/.style={font=\scriptsize\sffamily, align=center},
+    every loop/.style={looseness=6},
+  ]
+  % Estados
+  \node[neutral, initial, initial text={}] (q0) at (0, 0)    {$q_0$};
+  \node[ok]                                (q1) at (3, 2.4)  {$q_1$};
+  \node[ok]                                (q2) at (3, 0)    {$q_2$};
+  \node[neutral]                           (q3) at (5.6, 0)  {$q_3$};
+  \node[ok]                                (q4) at (8.2, 0)  {$q_4$};
+  \node[neutral]                           (q5) at (10.8, 0) {$q_5$};
+  \node[error]                             (e1) at (3, -2.6) {$e_1$};
+  \node[error]                             (e2) at (9.5, -2.6) {$e_2$};
+
+  % Etiquetas de lo que reconoce cada estado
+  \node[lbl, right=2mm of q1]                {ID / palabra\\reservada};
+  \node[lbl, below left=0mm and -1mm of q2]  {NUM\_ENTERO};
+  \node[lbl, below=1mm of q3]                {``\texttt{12.}''};
+  \node[lbl, below left=0mm and -1mm of q4]  {NUM\_REAL};
+  \node[lbl, below=1mm of q5]                {``\texttt{3.5.}''};
+  \node[lbl, left=2mm of e1, text=red!60!black]  {error:\\ID empieza\\con dígito};
+  \node[lbl, right=2mm of e2, text=red!60!black] {error:\\número mal\\formado};
+
+  % Transiciones
+  \path
+    (q0) edge              node        {$L$}        (q1)
+    (q0) edge              node        {$D$}        (q2)
+    (q1) edge [loop above] node        {$L, D$}     (q1)
+    (q2) edge [loop above] node        {$D$}        (q2)
+    (q2) edge              node        {\texttt{'.'}} (q3)
+    (q2) edge              node        {$L$}        (e1)
+    (q3) edge              node        {$D$}        (q4)
+    (q4) edge [loop above] node        {$D$}        (q4)
+    (q4) edge              node        {\texttt{'.'}} (q5)
+    (q4) edge              node[swap]  {$L$}        (e2)
+    (q5) edge              node        {$D$}        (e2)
+    (e1) edge [loop below] node        {$L, D$}     (e1)
+    (e1) edge              node[swap]  {\texttt{'.'}$^{\dagger}$} (e2)
+    (e2) edge [loop below] node        {$L, D,$ \texttt{'.'}$^{\dagger}$} (e2);
+\end{tikzpicture}

@@ -75,65 +75,41 @@ si no se pudo leer el archivo.
 ## Pruebas
 
 ```bash
-pytest                             # todas
-pytest -v                          # con el nombre de cada prueba
-pytest -v tests/test_lexer.py      # un solo archivo
-pytest -k shadowing                # solo las pruebas cuyo nombre contiene "shadowing"
+pytest                          # todas
+pytest -v tests/test_lexer.py   # un archivo
 ```
 
-Cada archivo cubre una parte del compilador, con entradas válidas e inválidas:
-
-| Archivo | Qué prueba | Autor |
-| --- | --- | --- |
-| `tests/test_lexer.py` | Tokens, posiciones, comentarios, palabras reservadas y errores léxicos (`@`, `12.3.4`, `3abc`, `&` suelto, comentario sin cerrar) | P5 |
-| `tests/test_lexerV2.py` | Casos borde del lexer: `12.`, `.5`, `3.5x`, columnas de error, entradas basura | P2 |
-| `tests/test_token_spec.py` | El lexer coincide con las expresiones regulares de la especificación | P1 |
-| `tests/test_errors.py` | Formato único `Línea N, columna M: ...` y jerarquía de errores | P1 |
-| `tests/test_symbol_table.py` | Pila de ámbitos: declarar, buscar, redeclarar, shadowing, tres niveles, cerrar el ámbito global | P5 |
-| `tests/test_semantic.py` | No declaradas, redeclaraciones, ámbitos, llaves desbalanceadas, reglas de tipos, varios errores en un programa | P5 |
-| `tests/test_p4_types.py` | Agrupación en sentencias, tabla de tipos, precedencia, mensajes sin errores en cascada | P4 |
-| `tests/test_integration.py` | Lexer + semántico sobre cada `examples/*.esp`, y `main.py` (opciones y códigos de salida 0, 1 y 2) | P5 |
-
-`tests/helpers.py` tiene `tokens_by_hand()`, que arma tokens a mano para probar el
-semántico sin depender del lexer.
+| Archivo | Qué prueba |
+| --- | --- |
+| `test_lexer.py` | Tokens válidos, posiciones, comentarios y errores léxicos |
+| `test_token_spec.py` | Que el lexer coincide con la definición formal por expresiones regulares |
+| `test_errors.py` | El formato único de errores y advertencias |
+| `test_symbol_table.py` | Declaración, búsqueda, redeclaración y shadowing |
+| `test_semantic.py` | Variables no declaradas, ámbitos y reglas de tipos |
 
 ## Estructura del proyecto
 
 ```
-c_es_compiler/
-├── main.py                    # CLI: lee el archivo, corre las dos fases y muestra el resultado
-├── requirements.txt           # pytest
-├── pytest.ini
+c_compiler/
+├── main.py                    # punto de entrada (CLI)
 ├── compiler/
-│   ├── tokens.py              # Token y TokenType: contrato compartido
-│   ├── errors.py              # errores y advertencias: formato común
-│   ├── lexer.py               # P2
-│   ├── symbol_table.py        # P3
-│   ├── statements.py          # P4: agrupar tokens en sentencias
-│   ├── type_rules.py          # P4: reglas de tipos
-│   └── semantic.py            # P3 + P4: orquesta el análisis
-├── tests/
-│   ├── helpers.py             # tokens_by_hand(): tokens sin depender del lexer
-│   ├── test_errors.py
-│   ├── test_lexer.py
-│   ├── test_lexerV2.py
-│   ├── test_token_spec.py
-│   ├── test_symbol_table.py
-│   ├── test_semantic.py
-│   ├── test_p4_types.py
-│   └── test_integration.py
-├── examples/                  # programas .esp para las demos
-│   ├── valid.esp              # sin errores
-│   ├── scopes.esp             # ámbitos anidados y shadowing (válido, con advertencias)
-│   ├── lexical_errors.esp     # un error léxico por línea marcada
-│   ├── semantic_errors.esp    # un error semántico por línea marcada
-│   └── demo_p3.esp            # demo de la tabla de símbolos
+│   ├── tokens.py              # Token, TokenType y definición formal de tokens (regex)
+│   ├── errors.py              # errores y advertencias con formato único
+│   ├── lexer.py               # analizador léxico
+│   ├── symbol_table.py        # tabla de símbolos (pila de ámbitos)
+│   ├── statements.py          # agrupación de tokens en sentencias
+│   ├── type_rules.py          # reglas de tipos
+│   └── semantic.py            # analizador semántico
+├── tests/                     # pruebas con pytest
+├── examples/                  # programas de ejemplo (.esp)
 └── docs/
-    ├── especificacion_tokens.md   # P1
-    ├── gramatica.md               # gramática en BNF y EBNF
-    ├── automata.md                # P1
-    ├── reflexion.md               # P1
-    └── guion_video.md             # P1
+    ├── especificacion_tokens.md   # alfabeto, tokens, desambiguación y errores léxicos
+    ├── gramatica.md               # gramática léxica y sintáctica en BNF y EBNF
+    ├── automata.md                # autómata finito de identificadores y números
+    ├── latex/automata.pdf         # autómata formal y teorema de Kleene (fuente .tex)
+    ├── img/automata.png           # diagrama del autómata
+    ├── reflexion.md
+    └── guion_video.md
 ```
 
 ## Diseño
@@ -143,12 +119,12 @@ c_es_compiler/
 ```
 código fuente ──► lexer.tokenize() ──► list[Token] ──► semantic.analyze() ──► list[CompileError]
                         │                                   │
-                        └─► errores léxicos                 ├─ statements.group()             (P4)
-                                                            ├─ SymbolTable                    (P3)
-                                                            └─ type_rules.expression_type()   (P4)
+                        └─► errores léxicos                 ├─ statements.group()
+                                                            ├─ SymbolTable
+                                                            └─ type_rules.expression_type()
 ```
 
-### Contrato `Token` (acordado el día 1)
+### Token
 
 ```python
 @dataclass(frozen=True)
@@ -159,7 +135,7 @@ class Token:
     column: int       # desde 1, primer carácter del lexema
 ```
 
-El lexer siempre termina la lista con un token `EOF`. **No cambiar `tokens.py` sin avisar a todo el equipo.**
+El lexer siempre termina la lista con un token `EOF`.
 
 ### Errores y advertencias
 
@@ -179,8 +155,8 @@ Línea 7, columna 3: variable 'y' no declarada
 `LexicalError` y `SemanticError` heredan de `CompileError`. `error.labeled()` agrega
 el tipo adelante (`[error semántico] Línea 7, columna 3: ...`).
 
-Advertencias: variable declarada pero nunca usada, shadowing (una variable oculta a
-otra de un ámbito externo) y uso sin inicializar. Si hay errores léxicos, `main.py` no corre el semántico.
+Advertencias: variable declarada pero nunca usada, shadowing de una variable de un ámbito
+externo y uso de una variable sin inicializar.
 
 ### Sentencias
 
@@ -191,27 +167,14 @@ orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
 
 ### Tipos
 
-
-| Operación                           | Resultado      |
-| ------------------------------------ | -------------- |
-| `entero + entero` (también `- * /`) | `entero`       |
-| `entero + real`, `real + real`       | `real`         |
-| `< > <= >=` entre números           | `bool`         |
-| `== !=` entre números o entre `bool` | `bool`         |
-| `&& \|\|` entre `bool`, `!bool`        | `bool`         |
-| `-entero`, `-real` (menos unario)    | el mismo tipo  |
-| condición de `si` / `mientras`      | debe ser `bool` |
-
-Cualquier otra combinación es un error (`operación inválida: entero && bool`).
-
-**Asignación:** el valor debe ser del mismo tipo que la variable, con una excepción:
-un `entero` se puede guardar en un `real` (`real x = 5;` es válido), pero no al revés
-(`entero x = 2.5;` da `no se puede asignar real a entero`, porque perdería los decimales).
-
-El tipo de una expresión se calcula en `type_rules.expression_type()` con descenso
-recursivo: una función por nivel de precedencia de [docs/gramatica.md](docs/gramatica.md).
-Un mismo problema genera un solo error: si una subexpresión ya es inválida, las
-operaciones que la contienen no agregan más mensajes.
+| Operación | Resultado |
+| --- | --- |
+| `entero + entero` (también `- * /`) | `entero` |
+| `entero + real`, `real + real` | `real` |
+| `< > <= >=` entre números | `bool` |
+| `== !=` | `bool` |
+| `&& \|\|` entre `bool`, `!bool` | `bool` |
+| condición de `si` / `mientras` | debe ser `bool` |
 
 ## El lenguaje
 
@@ -244,239 +207,151 @@ No hay funciones en esta fase: los bloques de `si` y `mientras` bastan para demo
 
 ## Reflexión
 
-*Este texto también está en [docs/reflexion.md](docs/reflexion.md).*
+**¿Qué verificaciones del analizador semántico no puede expresar una gramática libre de
+contexto, y por qué?**
 
 ### 1. Cada fase, un nivel de la jerarquía de Chomsky
 
-| Fase | Tipo de lenguaje | Reconocedor | En nuestro código |
+| Fase | Tipo de lenguaje | Reconocedor | Qué necesita recordar |
 | --- | --- | --- | --- |
-| Lexer | Regular (tipo 3) | Autómata finito | `compiler/lexer.py` |
-| Parser | Libre de contexto (tipo 2) | Autómata de pila | `docs/gramatica.md` (Fase 2) |
-| Semántico | Sensible al contexto (tipo 1) | Tabla de símbolos (más memoria que una pila) | `compiler/semantic.py`, `compiler/symbol_table.py` |
+| Lexer | Regular (tipo 3) | Autómata finito | Nada más que el estado actual (memoria finita) |
+| Sintaxis | Libre de contexto (tipo 2) | Autómata de pila | Una pila: qué llaves y paréntesis siguen abiertos |
+| Semántico | Más allá de libre de contexto | Tabla de símbolos | Todos los nombres declarados, con su tipo y su ámbito |
 
-**Los tokens son regulares.** Cada token se describe con una expresión regular
-(`[a-zA-Z_][a-zA-Z0-9_]*`, `[0-9]+\.[0-9]+`, ...) y la unión de todas ellas también es
-regular. Por eso basta un autómata finito ([automata.md](docs/automata.md)). Para decidir
-el token, el lexer solo necesita saber en qué estado está, no lo que leyó antes. Su
-memoria es finita y no depende del largo del programa.
+- **Los tokens son regulares.** Cada token se define con una expresión regular, y por el
+  teorema de Kleene lo reconoce un autómata finito
+  (ver [docs/latex/automata.pdf](docs/latex/automata.pdf)).
+- **La sintaxis ya no es regular.** Los bloques anidados `{ { } }` tienen la forma
+  { `{`ⁿ `}`ⁿ }, que exige contar sin límite. Un autómata finito no puede hacerlo; uno
+  con una pila sí: apila cada `{` y desapila cada `}`. Eso es exactamente una gramática
+  libre de contexto ([docs/gramatica.md](docs/gramatica.md)).
+- **El semántico va un paso más allá.** Ya no basta con saber cuántas llaves hay
+  abiertas: hay que recordar *qué nombres* se declararon. Una pila solo deja ver el
+  elemento de arriba, y eso no alcanza para compararlos.
 
-**Los bloques balanceados ya no son regulares.** Un programa puede anidar
-`si (...) { mientras (...) { ... } }` a cualquier profundidad, y cada `{` debe
-cerrarse con su `}`. Ese patrón es el lenguaje { `{`ⁿ `}`ⁿ | n ≥ 0 }. Por el lema de
-bombeo para lenguajes regulares no es regular. Con la cadena `{`ᵖ `}`ᵖ, la parte
-bombeable cae dentro de las `{` iniciales, y al repetirla quedan más `{` que `}`.
-Un autómata finito no puede contar hasta un n arbitrario. Hace falta una **pila**,
-es decir, una gramática libre de contexto: `<bloque> ::= "{" <sentencias> "}"`.
+### 2. Lo que la CFG acepta y el semántico rechaza
 
-**Pero la pila tampoco alcanza para todo.** La CFG describe la *forma* de un programa,
-no su *significado*. Las reglas de la siguiente sección relacionan partes del programa
-que pueden estar arbitrariamente lejos entre sí, y eso exige más poder que un autómata
-de pila.
+Todas estas líneas de [examples/semantic_errors.esp](examples/semantic_errors.esp) son
+**sintácticamente correctas**: se derivan de la gramática. Aun así, el programa es
+inválido.
 
-### 2. Verificaciones del semántico que una CFG no expresa
+| Verificación | Ejemplo | Por qué la CFG no la expresa |
+| --- | --- | --- |
+| Declaración antes del uso | `z = 3;` sin `entero z;` antes | La regla `<asignacion> ::= ID "=" <expresion> ";"` acepta cualquier `ID`. Saber si `z` se declaró exige comparar este nombre con uno escrito antes, a distancia arbitraria. |
+| Sin redeclaración en un ámbito | `entero y = 1;` … `entero y = 2;` | Hay que comparar cada nombre nuevo con *todos* los del mismo ámbito. |
+| Ámbitos | `w = 2;` después de cerrar el bloque donde se declaró `w` | La CFG sabe que las llaves están balanceadas, pero no a qué declaración se refiere cada nombre. |
+| Tipos en la asignación | `entero x = verdadero;` | Ver el matiz que sigue. |
+| Condiciones `bool` | `si (y) { ... }` con `entero y` | El tipo de `y` está en su declaración, no en la condición. |
 
-Los programas siguientes se derivan sin problema de la gramática de
-[gramatica.md](docs/gramatica.md), pero el analizador semántico los rechaza.
+**Un matiz sobre los tipos.** Una CFG *sí* podría rechazar `entero x = verdadero;`.
+Como hay solo tres tipos, se puede dividir `<expresion>` en `<expr_entero>`,
+`<expr_real>` y `<expr_bool>` y escribir `<declaracion> ::= "entero" ID "=" <expr_entero>
+";"`. La gramática crece, pero sigue siendo libre de contexto. El problema aparece cuando
+la expresión usa una variable: en `si (y)` o en `x + 1`, el tipo depende de una
+declaración que está en otra parte del programa. Es el mismo problema que el de declarar
+antes de usar.
 
-- **Declaración antes del uso.**
+### 3. El argumento formal: el lenguaje { *wcw* }
 
-  ```c
-  entero contador = 0;
-  ...                 // cualquier cantidad de código
-  contdor = contador + 1;   // Línea N, columna 1: variable 'contdor' no declarada
-  ```
+"Toda variable usada debe estar declarada" tiene la misma estructura que
 
-  La regla `<asignacion> ::= ID "=" <expresion> ";"` acepta *cualquier* `ID`. Para
-  rechazar `contdor`, hay que comparar ese nombre letra por letra con todos los
-  nombres declarados antes, que pueden estar a cualquier distancia.
+> L = { *w* c *w* | *w* ∈ {a, b}\* }
 
-- **No redeclarar en el mismo ámbito.**
+En un programa, la primera *w* es el nombre en la declaración (`entero abba;`), `c` es
+el código intermedio y la segunda *w* es el uso (`abba = 1;`). El programa es válido
+solo si las dos *w* son **idénticas**, y pueden ser arbitrariamente largas.
 
-  ```c
-  entero y = 1;
-  entero y = 2;       // variable 'y' ya declarada en este ámbito (línea 1)
-  ```
+**L no es libre de contexto.** Se demuestra con el lema de bombeo para lenguajes libres
+de contexto (Bar-Hillel, Perles y Shamir, 1961). Supongamos que L fuera libre de
+contexto, con longitud de bombeo *p*. Tomemos
 
-  Dos `<declaracion>` seguidas son válidas para la gramática. Detectar el error es lo
-  mismo que en el caso anterior, pero al revés: hay que reconocer que dos cadenas
-  arbitrarias son *iguales*. Y además depende del ámbito: dentro de un bloque
-  `real y = 2.5;` sí es válido (shadowing).
+> s = aᵖ bᵖ c aᵖ bᵖ ∈ L
 
-- **Concordancia de tipos.**
+El lema garantiza que s = uvxyz, con |vxy| ≤ *p* y |vy| ≥ 1, de modo que u vⁱ x yⁱ z ∈ L
+para todo i ≥ 0. Tomemos i = 0, es decir, quitemos v e y:
 
-  ```c
-  bool activo = verdadero;
-  ...
-  entero x = activo;  // no se puede asignar bool a entero
-  ```
+1. **Si v o y contienen la `c`**, la cadena resultante no tiene `c` y no está en L.
+2. **Si vxy está entero a un lado de la `c`**, ese lado se acorta y el otro no. Las dos
+   mitades quedan de distinto largo y la cadena no está en L.
+3. **Si vxy cruza la `c` sin contenerla**, como |vxy| ≤ *p*, v solo puede tocar las b de
+   la izquierda e y solo las a de la derecha. Al quitarlas, la izquierda queda con menos
+   b o la derecha con menos a, y las mitades dejan de ser iguales.
 
-  Con literales, una CFG *podría* separar expresiones por tipo (`<expr_entera>`,
-  `<expr_bool>`, ...). Pero con variables el tipo de `activo` no está escrito en la
-  línea donde se usa: está en su declaración, en otra parte del programa. Saber el
-  tipo de la expresión es otra vez recordar qué nombre se declaró con qué tipo. Por
-  eso `type_rules.expression_type()` consulta la tabla de símbolos.
+En los tres casos se llega a una contradicción, así que L no es libre de contexto.
 
-Las tres reglas comparten la misma forma: **una cadena que aparece en un lugar
-condiciona lo que es válido en otro lugar arbitrariamente lejano.** Es la definición
-informal de *sensible al contexto*.
+**De { *wcw* } a los programas.** Sea P el lenguaje de los programas válidos y
+supongamos que fuera libre de contexto. Su intersección con el lenguaje regular
 
-### 3. El argumento formal: { wcw }
+> R = `entero␣` [ab]⁺ `;imprimir(` [ab]⁺ `);`
 
-Reducimos la regla "toda variable usada debe estar declarada" a su forma mínima:
+también lo sería, porque la intersección de un lenguaje libre de contexto con uno regular
+es libre de contexto. Como un programa de R es válido solo si declara la misma variable
+que imprime, la intersección es
 
-L = { *w* c *w* | *w* ∈ {a, b}\* }
+> P ∩ R = { `entero␣`*w*`;imprimir(`*w*`);` | *w* ∈ {a, b}⁺ }
 
-La primera *w* es el nombre en la declaración (`entero w;`), `c` es todo el código de
-en medio, y la segunda *w* es el uso (`w = 1;`). El programa es correcto solo si los
-dos nombres son idénticos.
+Ahora aplicamos el homomorfismo *h* que convierte `(` en `c` y borra todos los demás
+símbolos que no son a ni b. Las palabras `entero` e `imprimir` no tienen ninguna a ni b,
+así que *h*(P ∩ R) = { *wcw* | *w* ∈ {a, b}⁺ }. Los lenguajes libres de contexto son
+cerrados bajo homomorfismos, así que este lenguaje también sería libre de contexto. Pero
+la demostración anterior funciona igual con *w* no vacía (la cadena *s* elegida tiene
+*w* = aᵖbᵖ). Contradicción. Por lo tanto, **ninguna CFG puede describir exactamente los
+programas en que toda variable usada fue declarada**.
 
-**Teorema.** L no es libre de contexto.
-
-**Demostración (lema de bombeo para lenguajes libres de contexto).** Supongamos que L
-es libre de contexto, con longitud de bombeo *p*. Tomamos
-
-s = aᵖ bᵖ c aᵖ bᵖ ∈ L,  |s| ≥ p.
-
-El lema garantiza una descomposición s = *uvxyz* con |*vxy*| ≤ *p*, |*vy*| ≥ 1, y
-*uvⁱxyⁱz* ∈ L para todo i ≥ 0. Revisamos dónde puede caer *vxy*:
-
-1. **v o y contiene la `c`.** Con i = 0 la cadena queda sin `c` y no está en L, que
-   exige exactamente una.
-2. **vxy está entero a un lado de la `c`.** Bombear (i = 0 o i = 2) cambia la
-   longitud de esa mitad y deja la otra igual. Las dos mitades quedan de distinto
-   largo, así que no pueden ser la misma *w*.
-3. **vxy cruza la `c`, pero v e y no la contienen.** Como |*vxy*| ≤ *p*, *v* cae en
-   el bloque bᵖ de la izquierda y *y* en el bloque aᵖ de la derecha. Con i = 0 queda
-   aᵖ bᵖ⁻ʲ c aᵖ⁻ᵏ bᵖ, con j + k ≥ 1. La mitad izquierda termina con menos b o la
-   derecha empieza con menos a, así que las mitades ya no son iguales.
-
-En todos los casos alguna cadena bombeada sale de L. Eso contradice el lema, así que
-**L no es libre de contexto**. ∎
-
-Sí es **sensible al contexto**. Un autómata linealmente acotado lo reconoce: recorre
-la cinta marcando un símbolo de la izquierda y el correspondiente de la derecha,
-usando solo el espacio de la propia entrada.
-
-**De L a nuestro lenguaje.** Los lenguajes libres de contexto son cerrados bajo
-intersección con lenguajes regulares y bajo homomorfismos. El procedimiento tiene dos
-pasos:
-
-1. Se intersecta el conjunto de programas *válidos* con el lenguaje regular
-   `entero [ab]+;[ab]+=1;`. Quedan solo los programas `entero w;w=1;` en los que los
-   dos nombres coinciden.
-2. Se aplica el homomorfismo que borra `entero`, `=` y `1` y convierte cada `;` en
-   `c`. Se obtiene { *w* c *w* c }, que tampoco es libre de contexto. El argumento de
-   bombeo anterior se aplica igual.
-
-Si los programas válidos fueran libres de contexto, ese resultado también lo sería. Por lo tanto **ninguna CFG puede describir exactamente los programas
-semánticamente correctos de nuestro lenguaje.**
+{ *wcw* } sí es **sensible al contexto** (tipo 1): lo reconoce un autómata linealmente
+acotado, que puede recorrer la cinta de ida y vuelta para comparar las dos mitades.
 
 ### 4. Por eso existe la tabla de símbolos
 
-Si la gramática no puede imponer la regla, alguien más tiene que hacerlo. Por eso el
-compilador se divide en fases. El parser (CFG) acepta un superconjunto: todo lo que
-tiene la forma correcta. El análisis semántico filtra con memoria adicional.
+Ningún compilador real escribe una gramática sensible al contexto: sería enorme e
+ineficiente. La solución estándar divide el trabajo:
 
-Esa memoria es `SymbolTable` en
-[compiler/symbol_table.py](compiler/symbol_table.py): una **pila de
-diccionarios**, uno por ámbito.
+- **Una CFG para la estructura.** En nuestro caso, `statements.py` agrupa los tokens y
+  reconoce los bloques.
+- **Una estructura de datos para el contexto.** Es la tabla de símbolos de
+  [compiler/symbol_table.py](compiler/symbol_table.py). Recuerda cada nombre con su tipo:
+  `declare()` registra la primera *w* y `lookup()` la compara con la segunda.
+- **La pila de ámbitos** refleja el anidamiento de las llaves, que es la parte libre de
+  contexto. Los diccionarios de cada ámbito guardan los nombres, que es la parte que la
+  CFG no puede ver.
 
-| Evento en el programa | Operación | Qué resuelve |
-| --- | --- | --- |
-| `{` | `open_scope()` | Entra a un ámbito nuevo |
-| `entero x = ...;` | `declare(symbol)` | Guarda la primera *w*. Si ya existe en el ámbito actual: redeclaración |
-| `x = ...;` o `x` en una expresión | `lookup("x")` | Compara con la *w* guardada. Si no aparece: no declarada |
-| `}` | `close_scope()` | Las variables del bloque dejan de existir |
-
-La diferencia con el autómata de pila es la clave. Un autómata de pila solo ve el
-**tope**, y al leerlo lo saca. `lookup()` recorre **todos** los ámbitos, del más
-interno al global, sin destruir nada. Además compara nombres de longitud arbitraria
-contra todos los nombres guardados. Ese acceso libre a lo que ya se leyó es
-justamente lo que la demostración de la sección 3 prueba que una CFG no tiene.
-
-El shadowing muestra que la regla depende del contexto. `real x = 2.5;` es un error
-si ya hay una `x` en el **mismo** ámbito, pero es válido si la otra `x` está en un
-ámbito **externo**. La misma cadena es correcta o incorrecta según dónde aparece.
+La formalización de este enfoque son las **gramáticas de atributos** (Knuth, 1968): una
+CFG cuyas reglas además calculan y verifican información como tipos y nombres declarados.
 
 ### 5. Puente a la Fase 2: la concordancia en español
 
-El español tiene el mismo problema que la regla de declaración y uso:
+El español tiene el mismo tipo de restricción entre palabras:
 
-- **el perro negro** es correcto.
-- \***la perro negros** es incorrecto: el artículo, el sustantivo y el adjetivo deben
-  concordar en género y número.
+> *el perro negro* ✓  ·  \**la perros negro* ✗
 
-Es la misma estructura que `entero x = verdadero;`. Un rasgo fijado en una palabra
-(el género de *perro*, el tipo de `x`) restringe lo que es válido en otra.
+El artículo, el sustantivo y el adjetivo deben concordar en género y número. Como esos
+rasgos son finitos, una CFG puede manejarlos multiplicando las reglas (`<SN_masc_sing>`,
+`<SN_fem_plur>`, …), igual que podía con los tipos de los literales. Pero la gramática
+crece rápido, y la concordancia entre palabras alejadas tiene el mismo problema que las
+variables declaradas lejos de su uso. Shieber (1985) demostró que el suizo alemán tiene
+dependencias cruzadas que ninguna CFG puede describir. En la Fase 2 volveremos a usar la
+misma idea: una gramática para la estructura y algo más (rasgos o atributos) para el
+contexto.
 
-Hay un matiz importante. El género y el número toman pocos valores (masculino o
-femenino, singular o plural), así que la concordancia *local* sí cabe en una CFG.
-Basta multiplicar los no terminales: `SN_masc_sg`, `SN_fem_pl`, etc. El costo es que
-la gramática crece por cada rasgo y cada combinación. Con varios rasgos (género,
-número, persona, tiempo) el tamaño explota. Por eso es más limpio dejar la CFG
-simple y verificar la concordancia en una fase aparte, como hicimos con los tipos.
+### Referencias
 
-Cuando la dependencia es a distancia, como en *"**Las casas** que construyó mi abuelo
-en el pueblo **están** pintadas"*, o cuando se cruza, como en las dependencias
-seriales cruzadas que Shieber (1985) mostró en el alemán suizo, el lenguaje natural
-sale de verdad de los libres de contexto. Pasa lo mismo que con { *w* c *w* }.
-
-En la Fase 2 vamos a reutilizar esta idea. El parser del español usará una CFG para la
-estructura (sujeto, verbo, objeto, modificadores), y una fase semántica, con una
-tabla de rasgos análoga a la tabla de símbolos, verificará la concordancia. Esa
-frontera también nos dará un criterio concreto para comparar el parser formal con
-spaCy, HuggingFace y un LLM.
-
-## Equipo y responsabilidades
-
-| Persona | Integrante | Responsabilidad | Archivos |
-| --- | --- | --- | --- |
-| P1 | Pablo Vides | Especificación, autómata, errores, `main.py`, guion del video | `docs/`, `compiler/tokens.py`, `compiler/errors.py`, `main.py` |
-| P2 | Gabriela Valiente | Lexer | `compiler/lexer.py` |
-| P3 | Valeria Ortiz | Tabla de símbolos y ámbitos | `compiler/symbol_table.py`, secciones P3 de `semantic.py` |
-| P4 | Paola Pérez Pérez | Sentencias y reglas de tipos | `compiler/statements.py`, `compiler/type_rules.py`, secciones P4 de `semantic.py` |
-| P5 | Alejandro Melgar | Pruebas, repositorio, README, reflexión en el README, edición del video | `tests/`, `README.md`, `docs/reflexion.md` |
-
-### Cronograma
-
-
-| Día | P1                                    | P2                             | P3                               | P4                             | P5                            |
-| ---- | ------------------------------------- | ------------------------------ | -------------------------------- | ------------------------------ | ----------------------------- |
-| 1    | Tabla de tokens final                 | Esqueleto del lexer            | Diseño de la tabla de símbolos | Diseño de las reglas de tipos | Repositorio y pytest          |
-| 2    | Autómata y borrador de la reflexión | Lexer completo                 | Pila de ámbitos y declaraciones | Agrupación de sentencias      | Pruebas del lexer             |
-| 3    | Reflexión terminada                  | Errores léxicos y comentarios | No declaradas y shadowing        | Reglas de tipos                | Pruebas del semántico        |
-| 4    | Guion del video                       | Apoyo a la integración        | Integración con P4              | Integración con P3            | Correr todo y reportar fallos |
-| 5    | Programas de ejemplo                  | Corrección de errores         | Corrección de errores           | Corrección de errores         | README final                  |
-| 6    | Grabación                            | Grabación                     | Grabación                       | Grabación                     | Primer corte del video        |
-| 7    | Revisión y entrega                   | Revisar el video               | Revisar el video                 | Revisar el video               | Subir el video                |
-
-**Hitos:** lexer completo el día 3; flujo lexer → semántico el día 4.
-
-### Cómo trabajar sin bloquearse
-
-Mientras el lexer no esté listo, P3 y P4 prueban con tokens escritos a mano:
-
-```python
-from helpers import tokens_by_hand
-tokens = tokens_by_hand("""
-entero x = 1 ;
-si ( x > 0 ) {
-    real x = 2.5 ;
-}
-""")
-```
-
-### Flujo de Git
-
-- `main`: versión entregada.
-- `develop`: integración. Todo el trabajo entra aquí por pull request.
-- Una rama por tarea, creada desde `develop`: `feature/lexer`, `feat/semantic_symbol`,
-  `feature/semantic_analisis`, `feature/utils`, `feature/tests`, `feature/readme`.
-
-Antes de abrir un pull request hay que correr `pytest` y comprobar que pasa completo.
+- Bar-Hillel, Y., Perles, M. y Shamir, E. (1961). On formal properties of simple phrase
+  structure grammars. *Zeitschrift für Phonetik, Sprachwissenschaft und
+  Kommunikationsforschung*, 14, 143–172.
+- Chomsky, N. (1956). Three models for the description of language. *IRE Transactions on
+  Information Theory*, 2(3), 113–124.
+- Chomsky, N. (1959). On certain formal properties of grammars. *Information and
+  Control*, 2(2), 137–167.
+- Hopcroft, J. E., Motwani, R. y Ullman, J. D. (2006). *Introduction to Automata Theory,
+  Languages, and Computation* (3.ª ed.). Addison-Wesley. Cap. 7: lema de bombeo y
+  propiedades de cierre de los lenguajes libres de contexto.
+- Knuth, D. E. (1968). Semantics of context-free languages. *Mathematical Systems
+  Theory*, 2(2), 127–145.
+- Shieber, S. M. (1985). Evidence against the context-freeness of natural language.
+  *Linguistics and Philosophy*, 8(3), 333–343.
+- Sipser, M. (2013). *Introduction to the Theory of Computation* (3.ª ed.). Cengage
+  Learning. Sección 2.3: lenguajes que no son libres de contexto.
 
 ## Video
 
-**Enlace:** *(pendiente: se agrega cuando el video esté subido)*
-
-Guion y tiempos en [docs/guion_video.md](docs/guion_video.md).
+Enlace al video: *(pendiente)*
