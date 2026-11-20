@@ -354,4 +354,4 @@ contexto.
 
 ## Video
 
-Enlace al video: *(pendiente)*
+**[Ver el video de la Fase 1](https://ucaedusv-my.sharepoint.com/:v:/g/personal/00026222_uca_edu_sv/IQBthLC1Wp7ZQqQRa5WHCfDUAQ2_s_3PwvnFiZRhz5UftZU?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=k9zPex)** (9:44)
