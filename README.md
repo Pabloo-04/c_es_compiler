@@ -1,4 +1,4 @@
-# Compilador Fase 1: lexer y analizador semántico
+# Compilador Fase 2: análisis sintáctico del español con una gramática libre de contexto
 
 **Integrantes:**
 
@@ -8,350 +8,153 @@
 * Paola Pérez Pérez 00117222
 * Alejandro Melgar 00026222
 
-Lexer y analizador semántico en Python para un lenguaje propio estilo C con
-palabras clave en español. Los programas fuente usan la extensión `.esp`.
+Parser descendente recursivo para un fragmento del español, descrito por una gramática
+libre de contexto con rasgos de concordancia. El proyecto compara este enfoque basado en
+reglas con herramientas de NLP (spaCy y un modelo de HuggingFace Transformers) y con un
+LLM al que se le dan las reglas de producción.
 
-```c
-entero x = 1;
-si (x > 0) {
-    real x = 2.5;      // shadowing: otra x en un ámbito interno
-    imprimir(x);
-} sino {
-    imprimir(0);
-}
 ```
+$ python -m spanish.pipeline "el perro negro comió la comida" --arbol
+O
+  SN
+    DET el
+    SUST perro
+    SA
+      ADJ negro
+  SV
+    V comió
+    SN
+      DET la
+      SUST comida
+ACEPTADA
+```
+
+La **Fase 1** (lexer y analizador semántico de un lenguaje estilo C) está en
+[fase1/](fase1/README.md) y en el tag `fase-1` de Git.
 
 ## Requisitos e instalación
 
-- Python 3.10 o superior (se usa `match` y la sintaxis `X | None`).
-- Git.
+- Python 3.10 o superior.
+- Para las imágenes de árboles: el programa Graphviz (`brew install graphviz` en macOS,
+  `sudo apt install graphviz` en Linux).
 
 ```bash
-git clone https://github.com/Pabloo-04/c_es_compiler.git
-cd c_es_compiler
-git checkout develop               # rama con el trabajo integrado
-
 python3 -m venv .venv
 source .venv/bin/activate          # Windows: .venv\Scripts\activate
-pip install -r requirements.txt     # solo pytest; el compilador no tiene dependencias
+pip install -r requirements.txt
 ```
 
-Para comprobar que todo quedó bien instalado:
+Para los experimentos (notebooks), además:
 
 ```bash
-pytest -q                          # deben pasar todas las pruebas
-python main.py examples/valid.esp  # "Programa correcto: sin errores léxicos ni semánticos."
+pip install -r requirements-experiments.txt
+python -m spacy download es_core_news_sm
 ```
 
 ## Uso
 
 ```bash
-python main.py examples/valid.esp                  # lexer + semántico
-python main.py examples/valid.esp --tokens         # además muestra la tabla de tokens
-python main.py examples/scopes.esp --simbolos      # además muestra la tabla de símbolos
-python main.py examples/valid.esp --tokens --simbolos
-python main.py examples/lexical_errors.esp --lexer-only
-python main.py examples/semantic_errors.esp
+python -m spanish.pipeline "el gato come"                        # acepta o rechaza
+python -m spanish.pipeline "el gato come" --tokens --arbol       # palabras con rasgos y árbol
+python -m spanish.pipeline "el gato come" --png results/figures/gato.png
+python -m spanish.pipeline --archivo oraciones.txt               # una oración por línea
 ```
 
-Errores y advertencias se muestran ordenados por posición, con un único formato
-(en rojo los errores y en amarillo las advertencias cuando la salida es una terminal):
+Una oración pasa por tres etapas. Si una falla, las siguientes no se ejecutan:
+
+1. **Lexer:** separa las palabras y busca sus rasgos en el léxico (`data/lexicon.json`).
+2. **Parser:** construye el árbol con la gramática (`spanish/grammar.py`).
+3. **Concordancia:** verifica género, número y persona sobre el árbol.
+
+Los errores indican la palabra y la causa:
 
 ```
-=== Errores semánticos (2) ===
-Línea 2, columna 12: no se puede asignar bool a entero
-Línea 4, columna 8: variable 'y' ya declarada en este ámbito (línea 3)
+[error de concordancia] Palabra 3 ('corre'): el sujeto 'los niños' (plural) no concuerda con el verbo 'corre' (singular)
+RECHAZADA
 ```
 
-`--simbolos` muestra todas las variables declaradas con su ámbito, tipo, posición y
-si fueron inicializadas y usadas; los ámbitos internos aparecen indentados para que
-se vea el shadowing.
+## Reproducir los experimentos
 
-Si hay errores léxicos no se corre el semántico.
+Todos los sistemas leen el mismo set de prueba (`data/test_set.jsonl`) y escriben sus
+resultados en el mismo formato en `results/` (ver [docs/formato_salida.md](docs/formato_salida.md)).
 
-Código de salida: `0` sin errores (puede haber advertencias), `1` con errores y `2`
-si no se pudo leer el archivo.
+| Paso | Comando | Resultado |
+| --- | --- | --- |
+| 1. Nuestro parser | `python -m evaluation.run_parser` | `results/parser.jsonl` |
+| 2. spaCy y Transformers | `jupyter lab notebooks/nlp_comparison.ipynb` | `results/spacy.jsonl`, `results/transformers.jsonl` |
+| 3. LLM (zero-shot y few-shot) | `jupyter lab notebooks/llm_experiment.ipynb` | `results/llm_zero_shot.jsonl`, `results/llm_few_shot.jsonl` |
+| 4. Métricas | `python -m evaluation.metrics` | tablas y `results/figures/` |
+
+**Experimento con el LLM.** El proveedor se elige en la primera celda de configuración del
+notebook (`PROVIDER`). La clave de API va en un archivo `.env` en la raíz del repositorio,
+que no se sube a Git:
+
+```
+ANTHROPIC_API_KEY=...
+```
+
+Con `PROVIDER = "manual"` no hace falta clave: el notebook muestra cada prompt y se pega la
+respuesta de cualquier chat. Todos los prompts y respuestas quedan en
+`results/logs/llm_log.jsonl`.
 
 ## Pruebas
 
 ```bash
-pytest                          # todas
-pytest -v tests/test_lexer.py   # un archivo
+pytest
 ```
 
 | Archivo | Qué prueba |
 | --- | --- |
-| `test_lexer.py` | Tokens válidos, posiciones, comentarios y errores léxicos |
-| `test_token_spec.py` | Que el lexer coincide con la definición formal por expresiones regulares |
-| `test_errors.py` | El formato único de errores y advertencias |
-| `test_symbol_table.py` | Declaración, búsqueda, redeclaración y shadowing |
-| `test_semantic.py` | Variables no declaradas, ámbitos y reglas de tipos |
+| `test_contracts.py` | Palabras, árboles (formato entre paréntesis) y mensajes de error |
+| `test_grammar_and_data.py` | Que la gramática esté bien formada y que el léxico y el set de prueba sean coherentes con ella |
+| `test_formats_and_prompts.py` | El formato de resultados y los prompts del LLM |
+| `test_lexer.py` | Palabras, posiciones, tildes y palabras desconocidas |
+| `test_parser.py` | Árboles de oraciones válidas y rechazo de las que están fuera de la gramática |
+| `test_agreement.py` | Concordancia DET–SUST–ADJ y sujeto–verbo |
+| `test_pipeline_and_metrics.py` | El parser sobre todo el set de prueba y las métricas |
+
+Las pruebas de la Fase 1 se corren desde su carpeta: `cd fase1 && pytest`.
 
 ## Estructura del proyecto
 
 ```
 c_compiler/
-├── main.py                    # punto de entrada (CLI)
-├── compiler/
-│   ├── tokens.py              # Token, TokenType y definición formal de tokens (regex)
-│   ├── errors.py              # errores y advertencias con formato único
-│   ├── lexer.py               # analizador léxico
-│   ├── symbol_table.py        # tabla de símbolos (pila de ámbitos)
-│   ├── statements.py          # agrupación de tokens en sentencias
-│   ├── type_rules.py          # reglas de tipos
-│   └── semantic.py            # analizador semántico
-├── tests/                     # pruebas con pytest
-├── examples/                  # programas de ejemplo (.esp)
-└── docs/
-    ├── especificacion_tokens.md   # alfabeto, tokens, desambiguación y errores léxicos
-    ├── gramatica.md               # gramática léxica y sintáctica en BNF y EBNF
-    ├── automata.md                # autómata finito de identificadores y números
-    ├── latex/automata.pdf         # autómata formal y teorema de Kleene (fuente .tex)
-    ├── img/automata.png           # diagrama del autómata
-    ├── reflexion.md
-    └── guion_video.md
+├── spanish/                    # el analizador
+│   ├── tokens.py               # palabras, categorías y rasgos
+│   ├── lexicon.py              # carga del léxico
+│   ├── lexer.py                # analizador léxico
+│   ├── grammar.py              # la gramática como datos (producciones)
+│   ├── parser.py               # parser descendente recursivo
+│   ├── tree.py                 # árbol sintáctico y notación entre paréntesis
+│   ├── agreement.py            # verificación de concordancia
+│   ├── trees.py                # visualización (graphviz / nltk)
+│   ├── errors.py               # errores con formato único
+│   └── pipeline.py             # lexer → parser → concordancia → visualización
+├── evaluation/
+│   ├── formats.py              # formato del set de prueba y de los resultados
+│   ├── run_parser.py           # corre el parser sobre el set de prueba
+│   └── metrics.py              # precisión, cobertura, rechazo correcto, errores
+├── experiments/
+│   ├── tagsets.py              # etiquetas de spaCy/Transformers → nuestras categorías
+│   ├── llm_client.py           # cliente intercambiable del LLM y registro de llamadas
+│   └── prompts.py              # prompts zero-shot y few-shot
+├── notebooks/
+│   ├── nlp_comparison.ipynb    # spaCy y Transformers
+│   └── llm_experiment.ipynb    # experimento con el LLM
+├── data/
+│   ├── lexicon.json            # léxico con rasgos
+│   └── test_set.jsonl          # set de prueba
+├── results/                    # salidas de cada sistema, logs y figuras
+├── tests/
+├── docs/
+│   ├── gramatica_es.md         # la gramática, explicada
+│   ├── formato_salida.md       # formato del set de prueba y de los resultados
+│   └── informe/                # informe en LaTeX
+└── fase1/                      # Fase 1 completa
 ```
 
-## Diseño
+## Documentación
 
-### Flujo
-
-```
-código fuente ──► lexer.tokenize() ──► list[Token] ──► semantic.analyze() ──► list[CompileError]
-                        │                                   │
-                        └─► errores léxicos                 ├─ statements.group()
-                                                            ├─ SymbolTable
-                                                            └─ type_rules.expression_type()
-```
-
-### Token
-
-```python
-@dataclass(frozen=True)
-class Token:
-    type: TokenType   # INT, ID, REAL_LITERAL, EQUAL, LBRACE, EOF, ...
-    lexeme: str       # texto exacto: "x", "3.14", "=="
-    line: int         # desde 1
-    column: int       # desde 1, primer carácter del lexema
-```
-
-El lexer siempre termina la lista con un token `EOF`.
-
-### Errores y advertencias
-
-Las dos fases **acumulan** los diagnósticos en una lista y siguen analizando;
-no se detienen en el primero. Todos se imprimen con un único formato:
-
-```
-Línea 7, columna 3: variable 'y' no declarada
-```
-
-| Clase (`compiler/errors.py`) | Uso |
-| --- | --- |
-| `LexicalError(line, column, message)` | Errores del lexer |
-| `SemanticError(line, column, message)` | Errores del semántico |
-| `CompileWarning(line, column, message)` | Advertencias: el programa sigue siendo válido |
-
-`LexicalError` y `SemanticError` heredan de `CompileError`. `error.labeled()` agrega
-el tipo adelante (`[error semántico] Línea 7, columna 3: ...`).
-
-Advertencias: variable declarada pero nunca usada, shadowing de una variable de un ámbito
-externo y uso de una variable sin inicializar.
-
-### Sentencias
-
-No hay parser completo en esta fase. `statements.group()` produce una lista
-**plana** de sentencias: `DECLARATION`, `ASSIGNMENT`, `IF`, `ELSE`, `WHILE`,
-`PRINT`, `OPEN_BLOCK` (`{`) y `CLOSE_BLOCK` (`}`). El semántico la recorre en
-orden: `{` abre un ámbito en la tabla de símbolos y `}` lo cierra.
-
-### Tipos
-
-| Operación | Resultado |
-| --- | --- |
-| `entero + entero` (también `- * /`) | `entero` |
-| `entero + real`, `real + real` | `real` |
-| `< > <= >=` entre números | `bool` |
-| `== !=` | `bool` |
-| `&& \|\|` entre `bool`, `!bool` | `bool` |
-| condición de `si` / `mientras` | debe ser `bool` |
-
-## El lenguaje
-
-### Tokens
-
-
-| Token               | Expresión regular                                                                   |
-| ------------------- | ------------------------------------------------------------------------------------ |
-| Palabras reservadas | `entero`, `real`, `bool`, `si`, `sino`, `mientras`, `imprimir`, `verdadero`, `falso` |
-| ID                  | `[a-zA-Z_][a-zA-Z0-9_]*` (después de descartar las palabras reservadas)             |
-| NUM_ENTERO          | `[0-9]+`                                                                             |
-| NUM_REAL            | `[0-9]+\.[0-9]+`                                                                     |
-| Operadores          | `==`, `!=`, `<=`, `>=`, `&&`, `||`, `+`, `-`, `*`, `/`, `<`, `>`, `=`, `!`           |
-| Delimitadores       | `(`, `)`, `{`, `}`, `;`, `,`                                                         |
-| Comentarios         | `//.*` y `/\*(.|\n)*?\*/`                                                            |
-
-La especificación formal y el autómata están en [docs/especificacion_tokens.md](docs/especificacion_tokens.md) y [docs/automata.md](docs/automata.md). La versión ejecutable de las expresiones regulares es `TOKEN_PATTERNS` en `compiler/tokens.py`, y `tests/test_token_spec.py` verifica que el lexer coincide con ella.
-
-La gramática completa (léxica y sintáctica, en BNF y EBNF, con precedencia de operadores) está en [docs/gramatica.md](docs/gramatica.md).
-
-### Sentencias
-
-```
-tipo ID ;              tipo ID = expr ;          ID = expr ;
-si ( expr ) { ... }    si ( expr ) { ... } sino { ... }
-mientras ( expr ) { ... }                        imprimir ( expr ) ;
-```
-
-No hay funciones en esta fase: los bloques de `si` y `mientras` bastan para demostrar los ámbitos.
-
-## Reflexión
-
-**¿Qué verificaciones del analizador semántico no puede expresar una gramática libre de
-contexto, y por qué?**
-
-### 1. Cada fase, un nivel de la jerarquía de Chomsky
-
-| Fase | Tipo de lenguaje | Reconocedor | Qué necesita recordar |
-| --- | --- | --- | --- |
-| Lexer | Regular (tipo 3) | Autómata finito | Nada más que el estado actual (memoria finita) |
-| Sintaxis | Libre de contexto (tipo 2) | Autómata de pila | Una pila: qué llaves y paréntesis siguen abiertos |
-| Semántico | Más allá de libre de contexto | Tabla de símbolos | Todos los nombres declarados, con su tipo y su ámbito |
-
-- **Los tokens son regulares.** Cada token se define con una expresión regular, y por el
-  teorema de Kleene lo reconoce un autómata finito
-  (ver [docs/latex/automata.pdf](docs/latex/automata.pdf)).
-- **La sintaxis ya no es regular.** Los bloques anidados `{ { } }` tienen la forma
-  { `{`ⁿ `}`ⁿ }, que exige contar sin límite. Un autómata finito no puede hacerlo; uno
-  con una pila sí: apila cada `{` y desapila cada `}`. Eso es exactamente una gramática
-  libre de contexto ([docs/gramatica.md](docs/gramatica.md)).
-- **El semántico va un paso más allá.** Ya no basta con saber cuántas llaves hay
-  abiertas: hay que recordar *qué nombres* se declararon. Una pila solo deja ver el
-  elemento de arriba, y eso no alcanza para compararlos.
-
-### 2. Lo que la CFG acepta y el semántico rechaza
-
-Todas estas líneas de [examples/semantic_errors.esp](examples/semantic_errors.esp) son
-**sintácticamente correctas**: se derivan de la gramática. Aun así, el programa es
-inválido.
-
-| Verificación | Ejemplo | Por qué la CFG no la expresa |
-| --- | --- | --- |
-| Declaración antes del uso | `z = 3;` sin `entero z;` antes | La regla `<asignacion> ::= ID "=" <expresion> ";"` acepta cualquier `ID`. Saber si `z` se declaró exige comparar este nombre con uno escrito antes, a distancia arbitraria. |
-| Sin redeclaración en un ámbito | `entero y = 1;` … `entero y = 2;` | Hay que comparar cada nombre nuevo con *todos* los del mismo ámbito. |
-| Ámbitos | `w = 2;` después de cerrar el bloque donde se declaró `w` | La CFG sabe que las llaves están balanceadas, pero no a qué declaración se refiere cada nombre. |
-| Tipos en la asignación | `entero x = verdadero;` | Ver el matiz que sigue. |
-| Condiciones `bool` | `si (y) { ... }` con `entero y` | El tipo de `y` está en su declaración, no en la condición. |
-
-**Un matiz sobre los tipos.** Una CFG *sí* podría rechazar `entero x = verdadero;`.
-Como hay solo tres tipos, se puede dividir `<expresion>` en `<expr_entero>`,
-`<expr_real>` y `<expr_bool>` y escribir `<declaracion> ::= "entero" ID "=" <expr_entero>
-";"`. La gramática crece, pero sigue siendo libre de contexto. El problema aparece cuando
-la expresión usa una variable: en `si (y)` o en `x + 1`, el tipo depende de una
-declaración que está en otra parte del programa. Es el mismo problema que el de declarar
-antes de usar.
-
-### 3. El argumento formal: el lenguaje { *wcw* }
-
-"Toda variable usada debe estar declarada" tiene la misma estructura que
-
-> L = { *w* c *w* | *w* ∈ {a, b}\* }
-
-En un programa, la primera *w* es el nombre en la declaración (`entero abba;`), `c` es
-el código intermedio y la segunda *w* es el uso (`abba = 1;`). El programa es válido
-solo si las dos *w* son **idénticas**, y pueden ser arbitrariamente largas.
-
-**L no es libre de contexto.** Se demuestra con el lema de bombeo para lenguajes libres
-de contexto (Bar-Hillel, Perles y Shamir, 1961). Supongamos que L fuera libre de
-contexto, con longitud de bombeo *p*. Tomemos
-
-> s = aᵖ bᵖ c aᵖ bᵖ ∈ L
-
-El lema garantiza que s = uvxyz, con |vxy| ≤ *p* y |vy| ≥ 1, de modo que u vⁱ x yⁱ z ∈ L
-para todo i ≥ 0. Tomemos i = 0, es decir, quitemos v e y:
-
-1. **Si v o y contienen la `c`**, la cadena resultante no tiene `c` y no está en L.
-2. **Si vxy está entero a un lado de la `c`**, ese lado se acorta y el otro no. Las dos
-   mitades quedan de distinto largo y la cadena no está en L.
-3. **Si vxy cruza la `c` sin contenerla**, como |vxy| ≤ *p*, v solo puede tocar las b de
-   la izquierda e y solo las a de la derecha. Al quitarlas, la izquierda queda con menos
-   b o la derecha con menos a, y las mitades dejan de ser iguales.
-
-En los tres casos se llega a una contradicción, así que L no es libre de contexto.
-
-**De { *wcw* } a los programas.** Sea P el lenguaje de los programas válidos y
-supongamos que fuera libre de contexto. Su intersección con el lenguaje regular
-
-> R = `entero␣` [ab]⁺ `;imprimir(` [ab]⁺ `);`
-
-también lo sería, porque la intersección de un lenguaje libre de contexto con uno regular
-es libre de contexto. Como un programa de R es válido solo si declara la misma variable
-que imprime, la intersección es
-
-> P ∩ R = { `entero␣`*w*`;imprimir(`*w*`);` | *w* ∈ {a, b}⁺ }
-
-Ahora aplicamos el homomorfismo *h* que convierte `(` en `c` y borra todos los demás
-símbolos que no son a ni b. Las palabras `entero` e `imprimir` no tienen ninguna a ni b,
-así que *h*(P ∩ R) = { *wcw* | *w* ∈ {a, b}⁺ }. Los lenguajes libres de contexto son
-cerrados bajo homomorfismos, así que este lenguaje también sería libre de contexto. Pero
-la demostración anterior funciona igual con *w* no vacía (la cadena *s* elegida tiene
-*w* = aᵖbᵖ). Contradicción. Por lo tanto, **ninguna CFG puede describir exactamente los
-programas en que toda variable usada fue declarada**.
-
-{ *wcw* } sí es **sensible al contexto** (tipo 1): lo reconoce un autómata linealmente
-acotado, que puede recorrer la cinta de ida y vuelta para comparar las dos mitades.
-
-### 4. Por eso existe la tabla de símbolos
-
-Ningún compilador real escribe una gramática sensible al contexto: sería enorme e
-ineficiente. La solución estándar divide el trabajo:
-
-- **Una CFG para la estructura.** En nuestro caso, `statements.py` agrupa los tokens y
-  reconoce los bloques.
-- **Una estructura de datos para el contexto.** Es la tabla de símbolos de
-  [compiler/symbol_table.py](compiler/symbol_table.py). Recuerda cada nombre con su tipo:
-  `declare()` registra la primera *w* y `lookup()` la compara con la segunda.
-- **La pila de ámbitos** refleja el anidamiento de las llaves, que es la parte libre de
-  contexto. Los diccionarios de cada ámbito guardan los nombres, que es la parte que la
-  CFG no puede ver.
-
-La formalización de este enfoque son las **gramáticas de atributos** (Knuth, 1968): una
-CFG cuyas reglas además calculan y verifican información como tipos y nombres declarados.
-
-### 5. Puente a la Fase 2: la concordancia en español
-
-El español tiene el mismo tipo de restricción entre palabras:
-
-> *el perro negro* ✓  ·  \**la perros negro* ✗
-
-El artículo, el sustantivo y el adjetivo deben concordar en género y número. Como esos
-rasgos son finitos, una CFG puede manejarlos multiplicando las reglas (`<SN_masc_sing>`,
-`<SN_fem_plur>`, …), igual que podía con los tipos de los literales. Pero la gramática
-crece rápido, y la concordancia entre palabras alejadas tiene el mismo problema que las
-variables declaradas lejos de su uso. Shieber (1985) demostró que el suizo alemán tiene
-dependencias cruzadas que ninguna CFG puede describir. En la Fase 2 volveremos a usar la
-misma idea: una gramática para la estructura y algo más (rasgos o atributos) para el
-contexto.
-
-### Referencias
-
-- Bar-Hillel, Y., Perles, M. y Shamir, E. (1961). On formal properties of simple phrase
-  structure grammars. *Zeitschrift für Phonetik, Sprachwissenschaft und
-  Kommunikationsforschung*, 14, 143–172.
-- Chomsky, N. (1956). Three models for the description of language. *IRE Transactions on
-  Information Theory*, 2(3), 113–124.
-- Chomsky, N. (1959). On certain formal properties of grammars. *Information and
-  Control*, 2(2), 137–167.
-- Hopcroft, J. E., Motwani, R. y Ullman, J. D. (2006). *Introduction to Automata Theory,
-  Languages, and Computation* (3.ª ed.). Addison-Wesley. Cap. 7: lema de bombeo y
-  propiedades de cierre de los lenguajes libres de contexto.
-- Knuth, D. E. (1968). Semantics of context-free languages. *Mathematical Systems
-  Theory*, 2(2), 127–145.
-- Shieber, S. M. (1985). Evidence against the context-freeness of natural language.
-  *Linguistics and Philosophy*, 8(3), 333–343.
-- Sipser, M. (2013). *Introduction to the Theory of Computation* (3.ª ed.). Cengage
-  Learning. Sección 2.3: lenguajes que no son libres de contexto.
-
-## Video
-
-**[Ver el video de la Fase 1](https://ucaedusv-my.sharepoint.com/:v:/g/personal/00026222_uca_edu_sv/IQBthLC1Wp7ZQqQRa5WHCfDUAQ2_s_3PwvnFiZRhz5UftZU?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=k9zPex)** (9:44)
+- [Gramática](docs/gramatica_es.md): producciones, categorías, rasgos y ambigüedades.
+- [Formato de datos](docs/formato_salida.md): set de prueba y resultados.
+- [Informe](docs/informe/informe.tex): `cd docs/informe && latexmk -pdf informe.tex`.

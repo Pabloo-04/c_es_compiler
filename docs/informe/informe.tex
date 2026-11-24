@@ -1,0 +1,63 @@
+% Informe de la Fase 2. Edición final e integración: Persona 1.
+% Cada sección está en secciones/ para que cada persona escriba la suya sin conflictos de Git.
+%
+% Compilar:  latexmk -pdf informe.tex      (o pdflatex dos veces)
+\documentclass[11pt, a4paper]{article}
+
+\usepackage[T1]{fontenc}
+\usepackage[spanish, es-noshorthands, es-tabla]{babel}
+\usepackage{lmodern}
+\usepackage{microtype}
+\usepackage{upquote}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{automata, arrows.meta, positioning}
+\usepackage[hidelinks]{hyperref}
+
+\graphicspath{{../../results/figures/}{../img/}}
+
+\lstset{basicstyle=\ttfamily\small, breaklines=true, columns=fullflexible,
+        literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1}
+
+% Marca visible para lo pendiente; quitar antes de entregar.
+\newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
+% Árbol entre paréntesis en texto.
+\newcommand{\arbol}[1]{\texttt{#1}}
+
+\title{Fase 2: análisis sintáctico de un fragmento del español\\
+  con una gramática libre de contexto}
+\author{%
+  Pablo Vides (00080323) \and Gabriela Valiente (00010122) \and
+  Valeria Ortiz (00206022) \and Paola Pérez Pérez (00117222) \and
+  Alejandro Melgar (00026222)}
+\date{\pendiente{fecha de entrega}}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\pendiente{P1: resumen de 150--200 palabras al terminar el informe.}
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\input{secciones/01_marco_teorico}
+\input{secciones/02_gramatica}
+\input{secciones/03_parser}
+\input{secciones/04_lexer_concordancia_arboles}
+\input{secciones/05_set_de_prueba}
+\input{secciones/06_resultados}
+\input{secciones/07_comparacion_nlp}
+\input{secciones/08_analisis_llm}
+\input{secciones/09_comparacion_enfoques}
+\input{secciones/10_conclusiones}
+
+\input{secciones/referencias}
+
+\end{document}

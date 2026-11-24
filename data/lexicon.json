@@ -1,0 +1,48 @@
+{
+  "_comentario": "Léxico de ejemplo (Persona 3 lo completa). Una entrada por forma escrita, en minúsculas. Varias lecturas = palabra ambigua. Campos: categoria (DET SUST NPROP PRON ADJ V ADV PREP CONJ), lema, genero (masc/fem), numero (sg/pl), persona (1/2/3), tiempo (presente/preterito).",
+
+  "el":   [{"categoria": "DET", "lema": "el", "genero": "masc", "numero": "sg"}],
+  "la":   [{"categoria": "DET", "lema": "el", "genero": "fem",  "numero": "sg"}],
+  "los":  [{"categoria": "DET", "lema": "el", "genero": "masc", "numero": "pl"}],
+  "las":  [{"categoria": "DET", "lema": "el", "genero": "fem",  "numero": "pl"}],
+  "un":   [{"categoria": "DET", "lema": "un", "genero": "masc", "numero": "sg"}],
+  "una":  [{"categoria": "DET", "lema": "un", "genero": "fem",  "numero": "sg"}],
+
+  "gato":    [{"categoria": "SUST", "lema": "gato",    "genero": "masc", "numero": "sg"}],
+  "gatos":   [{"categoria": "SUST", "lema": "gato",    "genero": "masc", "numero": "pl"}],
+  "perro":   [{"categoria": "SUST", "lema": "perro",   "genero": "masc", "numero": "sg"}],
+  "perros":  [{"categoria": "SUST", "lema": "perro",   "genero": "masc", "numero": "pl"}],
+  "niña":    [{"categoria": "SUST", "lema": "niño",    "genero": "fem",  "numero": "sg"}],
+  "niños":   [{"categoria": "SUST", "lema": "niño",    "genero": "masc", "numero": "pl"}],
+  "libro":   [{"categoria": "SUST", "lema": "libro",   "genero": "masc", "numero": "sg"}],
+  "comida":  [{"categoria": "SUST", "lema": "comida",  "genero": "fem",  "numero": "sg"}],
+  "casa":    [{"categoria": "SUST", "lema": "casa",    "genero": "fem",  "numero": "sg"}],
+  "pescado": [{"categoria": "SUST", "lema": "pescado", "genero": "masc", "numero": "sg"}],
+
+  "ana":     [{"categoria": "NPROP", "lema": "Ana", "genero": "fem", "numero": "sg"}],
+  "ella":    [{"categoria": "PRON", "lema": "ella", "genero": "fem", "numero": "sg", "persona": 3}],
+  "nosotros":[{"categoria": "PRON", "lema": "nosotros", "genero": "masc", "numero": "pl", "persona": 1}],
+
+  "negro":   [{"categoria": "ADJ", "lema": "negro",   "genero": "masc", "numero": "sg"}],
+  "pequeña": [{"categoria": "ADJ", "lema": "pequeño", "genero": "fem",  "numero": "sg"}],
+  "grande":  [{"categoria": "ADJ", "lema": "grande",  "numero": "sg"}],
+
+  "come":    [{"categoria": "V", "lema": "comer", "persona": 3, "numero": "sg", "tiempo": "presente"}],
+  "comen":   [{"categoria": "V", "lema": "comer", "persona": 3, "numero": "pl", "tiempo": "presente"}],
+  "comió":   [{"categoria": "V", "lema": "comer", "persona": 3, "numero": "sg", "tiempo": "preterito"}],
+  "corre":   [{"categoria": "V", "lema": "correr", "persona": 3, "numero": "sg", "tiempo": "presente"}],
+  "corren":  [{"categoria": "V", "lema": "correr", "persona": 3, "numero": "pl", "tiempo": "presente"}],
+  "lee":     [{"categoria": "V", "lema": "leer", "persona": 3, "numero": "sg", "tiempo": "presente"}],
+  "leímos":  [{"categoria": "V", "lema": "leer", "persona": 1, "numero": "pl", "tiempo": "preterito"}],
+
+  "rápidamente": [{"categoria": "ADV", "lema": "rápidamente"}],
+  "muy":         [{"categoria": "ADV", "lema": "muy"}],
+
+  "en":  [{"categoria": "PREP", "lema": "en"}],
+  "con": [{"categoria": "PREP", "lema": "con"}],
+
+  "bajo": [
+    {"categoria": "ADJ",  "lema": "bajo", "genero": "masc", "numero": "sg"},
+    {"categoria": "PREP", "lema": "bajo"}
+  ]
+}
