@@ -88,9 +88,15 @@ def show(result: Result, args: argparse.Namespace) -> None:
         for token in result.tokens:
             print(f"  {token}")
     if result.tree is not None and args.arbol:
+        from .trees import ascii_tree
+
         print("\nÁrbol:")
-        print(result.tree.pretty())
-        # TODO(P2/P3): use trees.ascii_tree(result.tree) once it is implemented.
+        try:
+            drawing = ascii_tree(result.tree)
+        except (NotImplementedError, ImportError):
+            drawing = result.tree.pretty()
+        print(drawing)
+        
     if result.tree is not None and args.png:
         from .trees import render
 

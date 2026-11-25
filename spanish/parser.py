@@ -1,123 +1,109 @@
-"""Recursive-descent parser.  Owner: Person 2.
+"""Recursive-descent parser for the Spanish grammar.
 
-Input:  the tokens of one sentence (from lexer.py).
-Output: (tree, errors)
-  - tree:   the Node of the whole sentence (label "O"), or None if rejected.
-  - errors: list of ParseError (empty if the sentence was accepted).
-
-One method per non-terminal of spanish/grammar.py, exactly like the
-ExpressionChecker of Phase 1 (fase1/compiler/type_rules.py), which had one
-method per precedence level.
-
-The difference with Phase 1: words can be ambiguous and some non-terminals
-have alternatives that start with the same symbol (SV → V | V SN | V SN SP),
-so the parser needs BACKTRACKING: remember the position, try an alternative,
-and go back if it fails. mark()/reset() are implemented for that.
-
-Agreement is NOT checked here (that is agreement.py): "el gatos come" must
-parse fine and then fail agreement. Keeping them apart lets the metrics tell
-a syntax error from an agreement error.
+Input: tokens for one sentence.
+Output: (tree, []) on success, or (None, [error]) on failure.
 """
 
 from .errors import ParseError
-from .tokens import Category, Reading, Token
+from .grammar import productions_of
+from .tokens import Category, Token
 from .tree import Node
 
 
 class Parser:
     def __init__(self, tokens: list[Token]) -> None:
         self.tokens = tokens
-        self.pos = 0
-        self.errors: list[ParseError] = []
-        # Furthest position reached: the best place to report "unexpected word".
         self.furthest = 0
 
-    # ------------------------------------------------------------------
-    # Helpers (implemented)
-    # ------------------------------------------------------------------
-    def at_end(self) -> bool:
-        return self.pos >= len(self.tokens)
+        # Each non-terminal has a corresponding parser method.
+        self.phrases = {
+            "O": self.sentence,
+            "SN": self.noun_phrase,
+            "SV": self.verb_phrase,
+            "SA": self.adjective_phrase,
+            "SAdv": self.adverb_phrase,
+            "SP": self.prepositional_phrase,
+        }
 
-    def current(self) -> Token | None:
-        return None if self.at_end() else self.tokens[self.pos]
-
-    def mark(self) -> int:
-        """Save the position before trying an alternative."""
-        return self.pos
-
-    def reset(self, mark: int) -> None:
-        """Go back to a saved position (backtracking)."""
-        self.pos = mark
-
-    def match(self, category: Category) -> Node | None:
-        """If the current word has a reading of this category, consume it and
-        return its leaf; otherwise return None and consume nothing.
-
-        If the word has several readings of the same category (e.g. two DET
-        readings with different gender), the first one is taken.
-        TODO(P2): decide whether that is enough or whether to try them all.
-        """
-        token = self.current()
-        if token is None:
-            return None
-        readings: list[Reading] = token.readings_of(category)
-        if not readings:
-            return None
-        self.pos += 1
-        self.furthest = max(self.furthest, self.pos)
-        return Node.leaf(token, readings[0])
-
-    def error(self, message: str, token: Token | None = None) -> None:
-        if token is None:
-            self.errors.append(ParseError(None, None, message))
-        else:
-            self.errors.append(ParseError(token.position, token.word, message))
-
-    # ------------------------------------------------------------------
-    # Entry point
-    # ------------------------------------------------------------------
     def parse(self) -> tuple[Node | None, list[ParseError]]:
-        # TODO(P2):
-        #   tree = self.sentence()
-        #   if tree is None or not self.at_end():
-        #       report ONE error, pointing at self.tokens[self.furthest] if it
-        #       exists ("no se esperaba 'X' aquí"), or "oración incompleta".
-        #       return None, self.errors
-        #   return tree, []
-        raise NotImplementedError("TODO(P2): Parser.parse")
+        """Return the first sentence tree that consumes every token."""
+        for tree, end in self.sentence(0):
+            if end == len(self.tokens):
+                return tree, []
 
-    # ------------------------------------------------------------------
-    # One method per non-terminal (keep in sync with grammar.PRODUCTIONS)
-    # ------------------------------------------------------------------
-    def sentence(self) -> Node | None:
-        """O → SN SV"""
-        # TODO(P2)
-        raise NotImplementedError("TODO(P2): sentence")
+        if self.furthest == len(self.tokens):
+            error = ParseError(None, None, "Oración incompleta.")
+        else:
+            token = self.tokens[self.furthest]
+            error = ParseError(
+                token.position,
+                token.word,
+                f"No se esperaba '{token.word}' en esta posición.",
+            )
 
-    def noun_phrase(self) -> Node | None:
-        """SN → DET SUST | DET SUST SA | NPROP | PRON"""
-        # TODO(P2): try the longest alternative first (DET SUST SA before DET SUST).
-        raise NotImplementedError("TODO(P2): noun_phrase")
+        return None, [error]
 
-    def verb_phrase(self) -> Node | None:
-        """SV → V | V SN | V SP | V SN SP | V SAdv | V SN SAdv"""
-        # TODO(P2): longest first + backtracking with mark()/reset().
-        raise NotImplementedError("TODO(P2): verb_phrase")
+    # One entry point per non-terminal in grammar.py.
 
-    def adjective_phrase(self) -> Node | None:
-        """SA → ADJ | ADV ADJ"""
-        # TODO(P2)
-        raise NotImplementedError("TODO(P2): adjective_phrase")
+    def sentence(self, pos: int):
+        """O: oración."""
+        yield from self.phrase("O", pos)
 
-    def adverb_phrase(self) -> Node | None:
-        """SAdv → ADV"""
-        # TODO(P2)
-        raise NotImplementedError("TODO(P2): adverb_phrase")
+    def noun_phrase(self, pos: int):
+        """SN: sintagma nominal."""
+        yield from self.phrase("SN", pos)
 
-    def prepositional_phrase(self) -> Node | None:
-        """SP → PREP SN"""
-        # TODO(P2)
-        raise NotImplementedError("TODO(P2): prepositional_phrase")
+    def verb_phrase(self, pos: int):
+        """SV: sintagma verbal."""
+        yield from self.phrase("SV", pos)
+
+    def adjective_phrase(self, pos: int):
+        """SA: sintagma adjetival."""
+        yield from self.phrase("SA", pos)
+
+    def adverb_phrase(self, pos: int):
+        """SAdv: sintagma adverbial."""
+        yield from self.phrase("SAdv", pos)
+
+    def prepositional_phrase(self, pos: int):
+        """SP: sintagma preposicional."""
+        yield from self.phrase("SP", pos)
+
+    def phrase(self, label: str, pos: int):
+        """Try each production for this non-terminal from the same position."""
+        for production in productions_of(label):
+            for children, end in self.sequence(production.right, pos):
+                yield Node(label, children), end
+
+    def sequence(self, symbols: tuple[str, ...], pos: int):
+        """Recognize all symbols on the right-hand side, from left to right."""
+        if not symbols:
+            yield [], pos
+            return
+
+        first_symbol = symbols[0]
+        remaining_symbols = symbols[1:]
+
+        for first_node, next_pos in self.symbol(first_symbol, pos):
+            for other_nodes, end in self.sequence(remaining_symbols, next_pos):
+                yield [first_node, *other_nodes], end
+
+    def symbol(self, name: str, pos: int):
+        """Expand a non-terminal or match a lexical category."""
+        if name in self.phrases:
+            yield from self.phrases[name](pos)
+            return
+
+        if pos >= len(self.tokens):
+            return
+
+        token = self.tokens[pos]
+        category = Category(name)
+
+        for reading in token.readings_of(category):
+            next_pos = pos + 1
+            self.furthest = max(self.furthest, next_pos)
+            yield Node.leaf(token, reading), next_pos
 
 
 def parse(tokens: list[Token]) -> tuple[Node | None, list[ParseError]]:
