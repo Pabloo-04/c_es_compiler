@@ -192,4 +192,4 @@ c_compiler/
 ## Documentación
 
 - [Gramática y formato de salida](docs/gramatica_es.md): producciones, léxico, concordancia, ambigüedades, formato del conjunto de prueba y de los resultados, y cálculo de las métricas.
-- [Informe](docs/informe/informe.tex): `cd docs/informe && latexmk -pdf informe.tex`.
+- [Informe](docs/informe.pdf): `cd docs`.
