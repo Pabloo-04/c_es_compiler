@@ -11,7 +11,8 @@ import pytest
 from evaluation import metrics
 from evaluation.formats import Prediction, TestItem, load_test_set
 from spanish.grammar import tree_shape_errors
-from spanish.pipeline import analyze
+from spanish.pipeline import analyze, pp_attachment
+from spanish.tree import Node
 
 ITEMS = load_test_set()
 
@@ -85,3 +86,32 @@ def test_function_accuracy():
     ]
     assert metrics.function_accuracy(pairs, "subject") == pytest.approx(1 / 2)
     assert metrics.function_accuracy(pairs, "verb") == 1
+
+
+# ---------------------------------------------------------------------------
+# PP attachment in the parser tree, and its metric (2.7 d)
+# ---------------------------------------------------------------------------
+@pytest.mark.parametrize("tree, expected", [
+    # The parser's rule (document 1.4): with an object, the PP goes to the nearest noun.
+    ("(S (NP (NPbase (Prn él))) (VP (Verb mató) (NP (NPbase (Det un) (Nom (Noun elefante))) "
+     "(PP (Prep en) (NP (NPbase (Pos sus) (Nom (Noun pijamas))))))))", "sustantivo"),
+    # Without an object, it goes to the verb (VP').
+    ("(S (NP (NPbase (Det el) (Nom (Noun perro)))) (VP (Verb duerme) "
+     "(PP (Prep en) (NP (NPbase (Pos sus) (Nom (Noun pijamas)))))))", "verbo"),
+    ("(S (NP (NPbase (Prn ella))) (VP (Verb come)))", None),
+])
+def test_pp_attachment_from_the_tree(tree, expected):
+    assert pp_attachment(Node.from_bracketed(tree)) == expected
+
+
+def test_pp_attachment_accuracy():
+    def pp_item(id_, gold):
+        return TestItem(id_, 1, "X.", True, True, None, ("pp",), (("ella", "Prn"),), "ella", "come", "", gold)
+
+    pairs = [
+        (pp_item(1, "verbo"), Prediction(1, "parser", True, pp_attachment="sustantivo")),   # wrong
+        (pp_item(2, "sustantivo"), Prediction(2, "parser", True, pp_attachment="sustantivo")),
+        (pp_item(3, "ambigua"), Prediction(3, "parser", True, pp_attachment=None)),          # no answer: wrong
+        (pp_item(4, None), Prediction(4, "parser", True, pp_attachment=None)),               # no PP: excluded
+    ]
+    assert metrics.pp_attachment_accuracy(pairs) == pytest.approx(1 / 3)
