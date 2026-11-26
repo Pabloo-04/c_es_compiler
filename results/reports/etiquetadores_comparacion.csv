@@ -1,0 +1,4 @@
+sistema,exactitud,precision_macro,cobertura_macro,f1_macro,excluidas,ms_por_oracion_mediana,errores
+spacy,0.95,0.982905982905983,0.9722222222222222,0.9748677248677249,0,2.5915,come: Verb→Noun; come: Verb→Noun
+xlmr_ud28,0.975,0.9629629629629629,0.9861111111111112,0.9703703703703704,0,25.7865,come: Verb→Prep
+beto16,0.95,0.982905982905983,0.9259259259259258,0.9351851851851851,0,27.667,él: Prn→Noun; él: Prn→Noun

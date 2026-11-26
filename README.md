@@ -143,6 +143,7 @@ c_compiler/
 ├── experiments/
 │   ├── tagsets.py              # etiquetas de spaCy/Transformers → nuestras categorías
 │   ├── reports.py              # matrices de confusión y reportes de clasificación
+│   ├── hf_tagger.py            # etiquetado palabra por palabra con modelos de HuggingFace
 │   ├── llm_client.py           # cliente intercambiable del LLM y registro de llamadas
 │   └── prompts.py              # prompts zero-shot y few-shot
 ├── notebooks/
