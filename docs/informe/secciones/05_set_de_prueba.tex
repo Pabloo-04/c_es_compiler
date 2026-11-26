@@ -1,13 +1,148 @@
 % Responsable: P4
-\section{Set de prueba y metodología}
+% Las tablas se generan con  python -m evaluation.metrics  (results/tablas/*.tex).
+\section{Conjunto de prueba y metodología}
 \label{sec:set_de_prueba}
 
-\pendiente{P4}
+\newcommand{\tablagenerada}[1]{%
+  \IfFileExists{../../results/tablas/#1.tex}{\input{../../results/tablas/#1.tex}}{%
+    \pendiente{generar results/tablas/#1.tex con python -m evaluation.metrics}}}
 
-% Contenido esperado:
+\subsection{Construcción del conjunto de prueba}
+
+El conjunto de prueba (\texttt{data/test\_set.csv}) tiene 73 oraciones en los tres niveles que
+pide el enunciado. Cada oración lleva la salida esperada completa, en el formato de la
+sección~2.3 de \texttt{docs/gramatica\_es.md}:
 \begin{itemize}
-  \item Construcción del set: 60+ oraciones en tres niveles; criterios de cada nivel.
-  \item Columnas en\_gramatica y espanol\_valido, y por qué son distintas; fenómenos de cada oración.
-  \item Definición de las métricas: precisión, cobertura, tasa de rechazo correcto, clasificación de errores.
-  \item Cómo se corrió cada sistema (comandos, versiones, fecha).
+  \item si la gramática debe aceptarla (\texttt{en\_gramatica}) y si es español correcto
+    (\texttt{espanol\_valido});
+  \item por qué se rechaza (\texttt{tipo\_error}: sintáctico o de concordancia);
+  \item qué fenómenos pone a prueba (\texttt{fenomeno});
+  \item la categoría de cada palabra (\texttt{etiquetas});
+  \item el núcleo del sujeto, el verbo principal y el núcleo del objeto directo;
+  \item a qué se une la primera frase preposicional (\texttt{pp\_adjunta}).
 \end{itemize}
+
+\begin{description}
+  \item[Nivel 1, simples (20).] Oraciones sujeto-verbo y sujeto-verbo-objeto sin
+    modificadores. Cubren los tres tipos de sujeto de la gramática (pronombre, determinante y
+    posesivo), singular y plural, las tres personas y los dos tiempos verbales. Todas deben
+    aceptarse: son lo mínimo que la gramática tiene que cubrir.
+  \item[Nivel 2, intermedias (29).] Las mismas estructuras con modificadores: adjetivos,
+    intensificadores (\emph{muy alto}, \emph{bastante fácil}), adverbios y frases
+    preposicionales unidas al verbo. Incluyen la palabra ambigua \emph{bajo} (adjetivo o
+    preposición) y once variaciones que deben rechazarse. Diez de ellas son errores de
+    concordancia que la CFG deriva y el analizador semántico detecta, dentro del sintagma
+    nominal (\emph{*La perro come}) y entre sujeto y verbo (\emph{*Yo come una manzana}). La
+    otra es un intensificador sin adjetivo.
+  \item[Nivel 3, complejas (24).] Fenómenos que probablemente exceden la gramática:
+    \begin{itemize}
+      \item Siete oraciones que todavía se aceptan, pero con varias frases preposicionales,
+        ambigüedad estructural (\emph{Él mató un elefante en sus pijamas}, \emph{Mi perro vio un
+        gato en el jardín}) y concordancia a distancia (\emph{El perro de los niños come}).
+      \item Diecisiete que deben rechazarse:
+        \begin{itemize}
+          \item tres errores de concordancia a distancia (\emph{*El perro de los niños comen});
+          \item once oraciones correctas en español que la gramática no genera: sujeto omitido,
+            orden libre, coordinación, subordinadas y palabras fuera del léxico;
+          \item tres oraciones incorrectas con una estructura inválida.
+        \end{itemize}
+    \end{itemize}
+\end{description}
+
+\begin{table}[h]
+  \centering
+  \small
+  \resizebox{\linewidth}{!}{\tablagenerada{set_de_prueba}}
+  \caption{Composición del conjunto de prueba.}
+  \label{tab:set_de_prueba}
+\end{table}
+
+\begin{table}[h]
+  \centering
+  \small
+  \tablagenerada{fenomenos}
+  \caption{Fenómenos por nivel. Los 16 fenómenos de la lista acordada aparecen al menos dos veces.}
+  \label{tab:fenomenos}
+\end{table}
+
+Para escribir las oraciones seguimos las reglas de \texttt{docs/gramatica\_es.md}: solo se
+usa el vocabulario del léxico, salvo en las oraciones marcadas como \texttt{fuera\_lexico}, y
+no hay contracciones ni más puntuación que el punto final. Las etiquetas esperadas son las
+correctas en español aunque la gramática no acepte la oración: \emph{y}, \emph{que} y
+\emph{no} se etiquetan \texttt{X}. Ninguna oración coincide con los ejemplos del prompt
+\emph{few-shot} del LLM, para no premiar la memoria.
+
+\paragraph{Validación.} Al cargar el conjunto, \texttt{evaluation/formats.py} revisa cada fila:
+\begin{itemize}
+  \item que las etiquetas coincidan palabra por palabra con la oración;
+  \item que el sujeto, el verbo y el objeto sean palabras de la oración;
+  \item que una oración aceptada no tenga tipo de error;
+  \item que una oración con preposición indique a qué se une la frase preposicional.
+\end{itemize}
+Además, la prueba \texttt{test\_parser\_on\_the\_test\_set} pasa las 73 oraciones por el pipeline
+completo (lexer, parser y concordancia). Con eso verificamos que las etiquetas de
+\texttt{en\_gramatica} y \texttt{tipo\_error} corresponden a la gramática acordada, y no a lo que
+creíamos que decía.
+
+\subsection{Dos referencias: las reglas y el español}
+
+Las columnas \texttt{en\_gramatica} y \texttt{espanol\_valido} no miden lo mismo. Ninguna oración
+incorrecta está en la gramática, pero 11 oraciones correctas quedan fuera de ella: \emph{Leímos
+un libro}, \emph{El perro y el gato duermen}, \emph{La niña que lee un libro come}… Esas
+oraciones separan dos comportamientos. Un sistema que sigue las reglas formales las rechaza, y
+uno que sigue su conocimiento del español las acepta. Por eso cada métrica de aceptación se
+calcula contra las dos referencias. Un sistema con mejor exactitud contra
+\texttt{espanol\_valido} que contra \texttt{en\_gramatica} se está desviando de las reglas, que
+es la pregunta~(a) del experimento con el LLM.
+
+\subsection{Métricas}
+
+Las métricas están en \texttt{evaluation/metrics.py} y siguen la sección~2.7 del documento de
+formato. Cada sistema participa solo en las comparaciones para las que produce datos: spaCy no
+decide si una oración es válida, y Transformers no da sujeto, objeto ni unión de la frase
+preposicional.
+
+\paragraph{a) Aceptación} (parser, Transformers y LLM). La clase positiva es \emph{acepta}. Con
+VP, FP, FN y VN los verdaderos y falsos positivos y negativos:
+\[
+  \text{precisión} = \frac{VP}{VP+FP} \qquad
+  \text{cobertura} = \frac{VP}{VP+FN} \qquad
+  \text{rechazo correcto} = \frac{VN}{VN+FP} \qquad
+  \text{exactitud} = \frac{VP+VN}{VP+FP+FN+VN}
+\]
+También se reportan F1 y la proporción de oraciones bien rechazadas con el \texttt{tipo\_error}
+esperado, solo para los sistemas que dicen por qué rechazan. Una respuesta del LLM que no es un
+JSON válido cuenta como respuesta equivocada. Si se excluyera, un sistema podría mejorar sus
+números fallando.
+
+\paragraph{b) Etiquetado} (todos los sistemas). Se calcula la exactitud palabra por palabra y la
+precisión y cobertura por categoría. Las oraciones en las que un sistema produce otro número de
+palabras no se pueden alinear: se cuentan aparte. Nuestro parser solo produce etiquetas cuando
+la oración se puede derivar, así que su exactitud se calcula sobre esas oraciones.
+
+\paragraph{c) Funciones sintácticas.} Se compara el núcleo del sujeto, el verbo y el núcleo del
+objeto por coincidencia exacta de la palabra.
+
+\paragraph{d) Unión de la frase preposicional} (parser, spaCy y LLM). Se calcula sobre las 17
+oraciones con frase preposicional. La exactitud cuenta como error la falta de respuesta. Además
+se mide cuántas de las oraciones \texttt{ambigua} reconoce el sistema como ambiguas.
+
+\paragraph{e) Costo.} Tiempo medio de procesamiento por oración (\texttt{tiempo\_ms}) y número de
+fallos de ejecución.
+
+Todas las métricas se calculan para el conjunto completo y por nivel.
+
+\subsection{Procedimiento}
+
+Todos los sistemas leen el mismo conjunto y escriben una línea por oración en
+\texttt{results/<sistema>.jsonl}, en el mismo orden. Las métricas, las tablas de este informe y
+las gráficas se generan con un solo comando:
+\begin{lstlisting}
+python -m evaluation.run_parser               # results/parser.jsonl
+jupyter lab notebooks/nlp_comparison.ipynb    # results/spacy.jsonl, results/transformers.jsonl
+jupyter lab notebooks/llm_experiment.ipynb    # results/llm_zero.jsonl, results/llm_few.jsonl
+python -m evaluation.metrics                  # metrics.csv, tablas/*.tex, figures/*.png
+\end{lstlisting}
+Si el archivo de resultados de un sistema corresponde a una versión anterior del conjunto, las
+métricas lo omiten y avisan que hay que volver a correrlo.
+\pendiente{versiones de spaCy, del modelo de Transformers y del LLM, y fecha de ejecución.}
