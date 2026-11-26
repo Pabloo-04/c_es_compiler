@@ -34,6 +34,7 @@ def predict(item: TestItem) -> Prediction:
         subject=result.subject,
         verb=result.verb,
         object=result.object,
+        pp_attachment=result.pp_attachment,
         # The agreed format writes the tree only when the sentence is accepted.
         tree=result.tree.to_bracketed(lowercase=True) if result.accepted else None,
         num_trees=1 if result.accepted else None,

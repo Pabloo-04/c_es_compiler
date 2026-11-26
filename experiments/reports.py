@@ -174,3 +174,37 @@ def plot_confusion(matrix: pd.DataFrame, title: str, path: Path | str | None = N
         Path(path).parent.mkdir(parents=True, exist_ok=True)
         fig.savefig(path, dpi=150)
     return fig
+
+
+# ----------------------------------------------------------------------
+# PP attachment (docs/gramatica_es.md 2.7 d)
+# ----------------------------------------------------------------------
+PP_VALUES = ["sustantivo", "verbo", "ambigua"]
+NO_ANSWER = "sin respuesta"
+
+
+def pp_attachment_report(items: list[TestItem], predictions: list[Prediction]) -> tuple[pd.DataFrame, pd.Series]:
+    """Confusion matrix (expected × predicted) and summary, on sentences with a PP.
+
+    A prediction of None counts as "sin respuesta" (the system did not decide,
+    or did not see the PP), so it is wrong, not excluded: otherwise a system
+    could look better by not answering.
+    """
+    by_id = {p.id: p for p in predictions}
+    rows = [(item.pp_attachment, (by_id[item.id].pp_attachment if item.id in by_id else None) or NO_ANSWER)
+            for item in items if item.pp_attachment is not None]
+    columns = PP_VALUES + [NO_ANSWER]
+    matrix = pd.DataFrame(0, index=pd.Index(PP_VALUES, name="esperado"),
+                          columns=pd.Index(columns, name="predicho"))
+    for expected, got in rows:
+        matrix.loc[expected, got if got in columns else NO_ANSWER] += 1
+    ambiguous = [got for expected, got in rows if expected == "ambigua"]
+    summary = pd.Series({
+        "oraciones_con_pp": len(rows),
+        "aciertos": sum(e == g for e, g in rows),
+        "exactitud": sum(e == g for e, g in rows) / len(rows) if rows else None,
+        "ambiguas": len(ambiguous),
+        "ambiguas_detectadas": sum(g == "ambigua" for g in ambiguous),
+        "sin_respuesta": sum(g == NO_ANSWER for _, g in rows),
+    })
+    return matrix, summary

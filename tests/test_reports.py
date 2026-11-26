@@ -79,3 +79,18 @@ def test_plot_confusion_saves_the_figure(tmp_path):
     path = tmp_path / "m.png"
     reports.plot_confusion(reports.tag_confusion(y_true, y_pred), "prueba", path)
     assert path.exists() and path.stat().st_size > 0
+
+
+def test_pp_attachment_report():
+    def pp_item(id_, gold):
+        return TestItem(id_, 1, "X.", True, True, None, ("pp",), (("ella", "Prn"),), "ella", "come", "", gold)
+
+    items = [pp_item(1, "verbo"), pp_item(2, "ambigua"), pp_item(3, "ambigua"), pp_item(4, None)]
+    preds = [Prediction(1, "llm_zero", True, pp_attachment="verbo"),
+             Prediction(2, "llm_zero", True, pp_attachment="ambigua"),
+             Prediction(3, "llm_zero", True, pp_attachment=None),
+             Prediction(4, "llm_zero", True)]
+    matrix, summary = reports.pp_attachment_report(items, preds)
+    assert matrix.loc["ambigua", "sin respuesta"] == 1 and matrix.loc["verbo", "verbo"] == 1
+    assert summary["oraciones_con_pp"] == 3 and summary["exactitud"] == pytest.approx(2 / 3)
+    assert summary["ambiguas_detectadas"] == 1

@@ -15,8 +15,11 @@ ROW = {
     "id": "1", "nivel": "1", "oracion": "Ella come una manzana.", "en_gramatica": "si",
     "espanol_valido": "si", "tipo_error": "ninguno", "fenomeno": "svo",
     "etiquetas": "ella/Prn come/Verb una/Det manzana/Noun",
-    "sujeto": "ella", "verbo": "come", "objeto": "manzana",
+    "sujeto": "ella", "verbo": "come", "objeto": "manzana", "pp_adjunta": "",
 }
+ROW_PP = {**ROW, "oracion": "Ella come una manzana con su perro.",
+          "etiquetas": "ella/Prn come/Verb una/Det manzana/Noun con/Prep su/Pos perro/Noun",
+          "fenomeno": "svo;pp", "pp_adjunta": "verbo"}
 
 
 # ---------------------------------------------------------------------------
@@ -38,10 +41,20 @@ def test_valid_row():
     {"fenomeno": "sujeto"},                                        # unknown phenomenon
     {"nivel": "4"},
     {"sujeto": "perro"},                                           # not a word of the sentence
+    {"pp_adjunta": "verbo"},                                       # pp_adjunta without a preposition
 ])
 def test_invalid_rows(change):
     with pytest.raises(ValueError):
         TestItem.from_row({**ROW, **change})
+
+
+def test_pp_attachment_column():
+    assert TestItem.from_row(ROW_PP).pp_attachment == "verbo"
+    assert TestItem.from_row({**ROW_PP, "pp_adjunta": "ambigua"}).pp_attachment == "ambigua"
+    with pytest.raises(ValueError):
+        TestItem.from_row({**ROW_PP, "pp_adjunta": ""})            # has a Prep: must be labeled
+    with pytest.raises(ValueError):
+        TestItem.from_row({**ROW_PP, "pp_adjunta": "adjetivo"})    # not an allowed value
 
 
 # ---------------------------------------------------------------------------
@@ -51,7 +64,7 @@ def test_prediction_json_uses_the_agreed_keys():
     p = Prediction(1, "parser", True, tags=[["ella", "Prn"]], subject="ella", verb="come", object="")
     keys = list(p.to_json())
     assert keys == ["id", "sistema", "acepta", "tipo_error", "etiquetas", "sujeto", "verbo",
-                    "objeto", "arbol", "num_arboles", "tiempo_ms", "error_ejecucion"]
+                    "objeto", "pp_adjunta", "arbol", "num_arboles", "tiempo_ms", "error_ejecucion"]
     assert Prediction.from_json(p.to_json()) == p
 
 
@@ -101,6 +114,14 @@ def test_parse_answer():
     assert prompts.parse_answer("La oración es correcta.") is None
     assert prompts.parse_answer('{"acepta": true}') is None                  # missing keys
     assert prompts.parse_answer("```json\n" + good + "\n```") is None        # strict (TODO P5)
+    assert prompts.parse_answer(good)["pp_adjunta"] is None                  # optional key
+    with_pp = json.dumps({**json.loads(good), "pp_adjunta": "ambigua"})
+    assert prompts.parse_answer(with_pp)["pp_adjunta"] == "ambigua"
+
+
+def test_prompt_asks_for_pp_attachment_and_has_a_pp_example():
+    assert '"pp_adjunta"' in prompts.zero_shot("X.") and '"ambigua"' in prompts.zero_shot("X.")
+    assert any(answer["pp_adjunta"] for _, answer in prompts.EXAMPLES)
 
 
 # ---------------------------------------------------------------------------

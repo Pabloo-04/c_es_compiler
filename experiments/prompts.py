@@ -10,7 +10,8 @@ Two versions, as the assignment asks:
 The answer must be ONLY the JSON of docs/gramatica_es.md, section 2.6:
 
     {"acepta": true, "tipo_error": null, "etiquetas": [["ella", "Prn"], ...],
-     "sujeto": "ella", "verbo": "come", "objeto": "manzana", "arbol": "(S ...)"}
+     "sujeto": "ella", "verbo": "come", "objeto": "manzana", "pp_adjunta": null,
+     "arbol": "(S ...)"}
 
 If the answer is not valid JSON, the result line gets "acepta": null and
 "error_ejecucion": "respuesta_no_json" (section 2.6).
@@ -24,7 +25,9 @@ from spanish.grammar import TREE_SHAPES, as_bnf
 from spanish.lexicon import Lexicon
 from spanish.tokens import Category
 
-ANSWER_KEYS = ("acepta", "tipo_error", "etiquetas", "sujeto", "verbo", "objeto", "arbol")
+REQUIRED_KEYS = ("acepta", "tipo_error", "etiquetas", "sujeto", "verbo", "objeto", "arbol")
+OPTIONAL_KEYS = ("pp_adjunta",)          # missing -> None, the rest of the answer still counts
+ANSWER_KEYS = REQUIRED_KEYS + OPTIONAL_KEYS
 
 # Few-shot examples. They must NOT be sentences of the test set
 # (tests/test_formats_and_prompts.py checks it). TODO(P5): review and choose
@@ -33,26 +36,34 @@ EXAMPLES: list[tuple[str, dict]] = [
     ("Ella duerme.", {
         "acepta": True, "tipo_error": None,
         "etiquetas": [["ella", "Prn"], ["duerme", "Verb"]],
-        "sujeto": "ella", "verbo": "duerme", "objeto": "",
+        "sujeto": "ella", "verbo": "duerme", "objeto": "", "pp_adjunta": None,
         "arbol": "(S (NP (NPbase (Prn ella))) (VP (Verb duerme)))",
     }),
     ("La niña pequeña come una manzana roja.", {
         "acepta": True, "tipo_error": None,
         "etiquetas": [["la", "Det"], ["niña", "Noun"], ["pequeña", "Adj"], ["come", "Verb"],
                       ["una", "Det"], ["manzana", "Noun"], ["roja", "Adj"]],
-        "sujeto": "niña", "verbo": "come", "objeto": "manzana",
+        "sujeto": "niña", "verbo": "come", "objeto": "manzana", "pp_adjunta": None,
         "arbol": "(S (NP (NPbase (Det la) (Nom (Noun niña) (AdjP (Adj pequeña))))) "
                  "(VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana) (AdjP (Adj roja)))))))",
     }),
     ("Los perro duerme.", {
         "acepta": False, "tipo_error": "concordancia",
         "etiquetas": [["los", "Det"], ["perro", "Noun"], ["duerme", "Verb"]],
-        "sujeto": "perro", "verbo": "duerme", "objeto": "", "arbol": None,
+        "sujeto": "perro", "verbo": "duerme", "objeto": "", "pp_adjunta": None, "arbol": None,
     }),
     ("Duerme el perro.", {
         "acepta": False, "tipo_error": "sintactico",
         "etiquetas": [["duerme", "Verb"], ["el", "Det"], ["perro", "Noun"]],
-        "sujeto": "perro", "verbo": "duerme", "objeto": "", "arbol": None,
+        "sujeto": "perro", "verbo": "duerme", "objeto": "", "pp_adjunta": None, "arbol": None,
+    }),
+    ("La niña duerme con su perro.", {
+        "acepta": True, "tipo_error": None,
+        "etiquetas": [["la", "Det"], ["niña", "Noun"], ["duerme", "Verb"], ["con", "Prep"],
+                      ["su", "Pos"], ["perro", "Noun"]],
+        "sujeto": "niña", "verbo": "duerme", "objeto": "", "pp_adjunta": "verbo",
+        "arbol": "(S (NP (NPbase (Det la) (Nom (Noun niña)))) "
+                 "(VP (Verb duerme) (PP (Prep con) (NP (NPbase (Pos su) (Nom (Noun perro)))))))",
     }),
 ]
 
@@ -80,6 +91,8 @@ Responde SOLO con un objeto JSON, sin texto adicional, con estas claves:
 "acepta" (true o false), "tipo_error" ("sintactico", "concordancia" o null si acepta),
 "etiquetas" (lista de [palabra en minúsculas, categoría], sin el punto; usa X para palabras \
 fuera del léxico), "sujeto", "verbo" y "objeto" (la palabra núcleo en minúsculas, o "" si no hay),
+"pp_adjunta" (a qué se une la primera frase preposicional según la lectura de un hablante: "sustantivo",
+"verbo", "ambigua" si las dos lecturas son naturales, o null si no hay frase preposicional),
 "arbol" (el árbol si acepta, null si rechaza).
 """
 
@@ -130,8 +143,8 @@ def parse_answer(text: str) -> dict | None:
         data = json.loads(text.strip())
     except json.JSONDecodeError:
         return None
-    if not isinstance(data, dict) or any(key not in data for key in ANSWER_KEYS):
+    if not isinstance(data, dict) or any(key not in data for key in REQUIRED_KEYS):
         return None
     if data["acepta"] not in (True, False):
         return None
-    return {key: data[key] for key in ANSWER_KEYS}
+    return {key: data.get(key) for key in ANSWER_KEYS}

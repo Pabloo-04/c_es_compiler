@@ -15,6 +15,8 @@ system takes part in the ones it has data for (None values are excluded):
          a sentence with a different number of words counts as a tagging
          error and is reported apart.
   c) Syntactic functions: `sujeto`, `verbo`, `objeto`, exact match.
+  d) PP attachment (parser, spaCy, LLM): `pp_adjunta` against the test set,
+     only on sentences with a PP; a None prediction counts as wrong.
 
 Output: results/metrics.csv with the columns
     sistema,comparacion,nivel,metrica,valor
@@ -110,6 +112,21 @@ def function_accuracy(pairs: list[Pair], field: str) -> float | None:
 
 
 # ----------------------------------------------------------------------
+# d) PP attachment
+# ----------------------------------------------------------------------
+def pp_attachment_accuracy(pairs: list[Pair]) -> float | None:
+    """Sentences whose expected pp_adjunta is not None: share where the
+    prediction is the same ("sustantivo", "verbo" or "ambigua"). A None
+    prediction counts as wrong. None if no sentence has a PP.
+
+    Systems that never compute it (Transformers: always None) should be left
+    out of this comparison by the caller.
+    """
+    # TODO(P4)
+    raise NotImplementedError("TODO(P4): pp_attachment_accuracy")
+
+
+# ----------------------------------------------------------------------
 # Table (implemented): one row per system, comparison, level and metric
 # ----------------------------------------------------------------------
 METRICS: list[tuple[str, str, Callable[[list[Pair]], float | None]]] = [
@@ -123,7 +140,12 @@ METRICS: list[tuple[str, str, Callable[[list[Pair]], float | None]]] = [
     ("funciones", "sujeto", lambda p: function_accuracy(p, "subject")),
     ("funciones", "verbo", lambda p: function_accuracy(p, "verb")),
     ("funciones", "objeto", lambda p: function_accuracy(p, "object")),
+    ("estructura", "pp_adjunta", pp_attachment_accuracy),
 ]
+
+
+# Systems that only tag: they never fill pp_adjunta, so they are not compared on it.
+NO_STRUCTURE = {"transformers"}
 
 
 def metric_rows(system: str, pairs: list[Pair]) -> list[dict]:
@@ -134,6 +156,8 @@ def metric_rows(system: str, pairs: list[Pair]) -> list[dict]:
         if not group:
             continue
         for comparison, name, metric in METRICS:
+            if comparison == "estructura" and system in NO_STRUCTURE:
+                continue
             value = metric(group)
             if value is not None:
                 rows.append({"sistema": system, "comparacion": comparison, "nivel": level,
