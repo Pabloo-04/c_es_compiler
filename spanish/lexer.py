@@ -18,6 +18,8 @@ Differences with Phase 1:
     still has its tags (the word is tagged X).
 """
 
+import unicodedata
+
 from .errors import LexicalError
 from .lexicon import Lexicon
 from .tokens import Category, Reading, Token
@@ -26,10 +28,14 @@ from .tokens import Category, Reading, Token
 FINAL_PUNCTUATION = ".!?"
 
 
+# Spanish alphabet: the 26 Latin letters plus ñ and the accented vowels (and ü).
+# str.isalpha() would also accept letters of any other alphabet (я, 字, ç...),
+# which are not Spanish, so they are reported as invalid characters instead.
+SPANISH_LETTERS = frozenset("abcdefghijklmnopqrstuvwxyzáéíóúüñABCDEFGHIJKLMNOPQRSTUVWXYZÁÉÍÓÚÜÑ")
+
+
 def is_letter(c: str) -> bool:
-    # str.isalpha() accepts á, ñ, ü... and also letters from any alphabet.
-    # TODO(P3): restrict to the Spanish alphabet if the team prefers it.
-    return len(c) == 1 and c.isalpha()
+    return c in SPANISH_LETTERS
 
 
 def unknown_reading(word: str) -> Reading:
@@ -44,15 +50,35 @@ class Lexer:
         self.errors: list[LexicalError] = []
 
     def analyze(self) -> tuple[list[Token], list[LexicalError]]:
-        # TODO(P3):
-        #   1. Walk the sentence character by character keeping the column (1-based).
-        #   2. Spaces separate words.
-        #   3. A run of letters is a word: position = 1, 2, 3...
-        #      readings = self.lexicon.lookup(word) or (unknown_reading(word),)
-        #   4. Final punctuation (FINAL_PUNCTUATION) at the end: ignore it.
-        #   5. Any other character -> LexicalError(None, c, f"carácter inválido '{c}'")
-        #      and keep going.
-        raise NotImplementedError("TODO(P3): Lexer.analyze")
+        # Text typed on some systems stores "é" as "e" + a combining accent
+        # (NFD). Normalize to NFC so each accented letter is ONE character.
+        text = unicodedata.normalize("NFC", self.sentence).rstrip()
+        self.tokens, self.errors = [], []
+
+        # A single final punctuation mark is ignored; anywhere else it is invalid.
+        end = len(text) - 1 if text and text[-1] in FINAL_PUNCTUATION else len(text)
+
+        i = 0
+        while i < end:
+            c = text[i]
+            if c.isspace():
+                i += 1
+            elif is_letter(c):
+                start = i
+                while i < end and is_letter(text[i]):
+                    i += 1
+                self.add_word(text[start:i], column=start + 1)
+            else:
+                self.errors.append(
+                    LexicalError(None, c, f"carácter inválido '{c}' (columna {i + 1})")
+                )
+                i += 1
+        return self.tokens, self.errors
+
+    def add_word(self, word: str, column: int) -> None:
+        """Create the token of a word: its readings come from the lexicon."""
+        readings = self.lexicon.lookup(word) or (unknown_reading(word),)
+        self.tokens.append(Token(word, len(self.tokens) + 1, column, readings))
 
 
 def tokenize(sentence: str, lexicon: Lexicon | None = None) -> tuple[list[Token], list[LexicalError]]:
