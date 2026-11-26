@@ -28,6 +28,20 @@ def spacy_category(token) -> str:
     return CONVERSION.get(token.pos_, "X")
 
 
+def spacy_pp_attachment(doc) -> str | None:
+    """What the FIRST prepositional phrase attaches to (section 2.5): "verbo",
+    "sustantivo", or None (no PP, or attached to something else)."""
+    prep = next((t for t in doc if t.pos_ == "ADP" and t.dep_ == "case"), None)
+    if prep is None:
+        return None
+    attached_to = prep.head.head          # head of the PP -> what it attaches to
+    if attached_to.pos_ in ("VERB", "AUX"):
+        return "verbo"
+    if attached_to.pos_ in ("NOUN", "PROPN", "PRON"):
+        return "sustantivo"
+    return None
+
+
 def spacy_output(id_: int, doc, time_ms: float) -> dict:
     """One line of results/spacy.jsonl (section 2.5)."""
     tokens = [t for t in doc if t.pos_ != "PUNCT"]
@@ -40,7 +54,7 @@ def spacy_output(id_: int, doc, time_ms: float) -> dict:
         "id": id_, "sistema": "spacy", "acepta": None, "tipo_error": None,
         "etiquetas": [[t.text.lower(), spacy_category(t)] for t in tokens],
         "sujeto": role("nsubj"), "verbo": root.text.lower() if root else "",
-        "objeto": role("obj"), "arbol": None, "num_arboles": None,
+        "objeto": role("obj"), "pp_adjunta": spacy_pp_attachment(doc), "arbol": None, "num_arboles": None,
         "tiempo_ms": time_ms, "error_ejecucion": None,
     }
 

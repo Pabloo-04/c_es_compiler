@@ -235,6 +235,7 @@ Las categorías gramaticales son las de la [Parte 1](#parte-1-gramática).
 data/
   test_set.csv            ← conjunto de prueba con la salida esperada (Persona 4)
   lexicon.json            ← léxico con rasgos (Persona 3)
+  calibration_acceptability.csv ← pares mínimos para calibrar el umbral de BETO (Persona 1; fuera del conjunto de prueba)
 results/
   parser.jsonl            ← parser propio (Persona 2)
   spacy.jsonl             ← spaCy (Persona 1)
@@ -292,6 +293,7 @@ Una fila por oración. Lo construye la Persona 4.
 | `sujeto` | texto | Núcleo del sujeto (una palabra). Vacío si no hay sujeto explícito. |
 | `verbo` | texto | Verbo principal (una palabra). |
 | `objeto` | texto | Núcleo del objeto directo. Vacío si no hay. |
+| `pp_adjunta` | `sustantivo` / `verbo` / `ambigua` / vacío | A qué se une la **primera** frase preposicional de la oración. Vacío si no hay ninguna. |
 
 #### ¿Por qué dos columnas de gramaticalidad?
 
@@ -319,17 +321,31 @@ Si hay varios, se separan con `;` (por ejemplo `adjetivo;preterito`). Si hace fa
 4. **Las palabras en `etiquetas` van en minúsculas**; `oracion` conserva la mayúscula inicial.
 5. En oraciones con `en_gramatica = no`, las etiquetas siguen siendo las **correctas en español** (lo que debería decir un buen etiquetador), aunque nuestra gramática no las acepte.
 
+#### Valores de `pp_adjunta`
+
+Mide cómo resuelve cada sistema la ambigüedad de las PP (sección 1.4). Se etiqueta la lectura que daría un
+hablante, **no** la que elige nuestro parser:
+
+| Valor | Cuándo | Ejemplo |
+|---|---|---|
+| `sustantivo` | La PP modifica al sustantivo anterior. | *Ella comió la manzana **de su perro**.* |
+| `verbo` | La PP modifica al verbo. | *El perro duerme **en sus pijamas**.* · *Mi niña comió la manzana **con su perro**.* |
+| `ambigua` | Las dos lecturas son naturales. | *Él mató un elefante **en sus pijamas**.* |
+| vacío | La oración no tiene PP. | *Ella come una manzana.* |
+
+Si hay más de una PP, se etiqueta solo la primera.
+
 #### Ejemplo
 
 ```csv
-id,nivel,oracion,en_gramatica,espanol_valido,tipo_error,fenomeno,etiquetas,sujeto,verbo,objeto
-1,1,Ella come una manzana.,si,si,ninguno,svo,ella/Prn come/Verb una/Det manzana/Noun,ella,come,manzana
-2,2,Los perros grandes durmieron.,si,si,ninguno,adjetivo;intransitivo;preterito,los/Det perros/Noun grandes/Adj durmieron/Verb,perros,durmieron,
-3,2,Él mató un elefante muy gris ayer.,si,si,ninguno,intensificador;adverbio;preterito,él/Prn mató/Verb un/Det elefante/Noun muy/Intens gris/Adj ayer/Adv,él,mató,elefante
-4,3,Él mató un elefante en sus pijamas.,si,si,ninguno,ambiguedad;pp,él/Prn mató/Verb un/Det elefante/Noun en/Prep sus/Pos pijamas/Noun,él,mató,elefante
-5,2,La elefante grises duerme.,no,no,concordancia,concordancia_np,la/Det elefante/Noun grises/Adj duerme/Verb,elefante,duerme,
-6,2,Los perros come.,no,no,concordancia,concordancia_sv,los/Det perros/Noun come/Verb,perros,come,
-7,3,Come la manzana.,no,si,sintactico,sujeto_omitido,come/Verb la/Det manzana/Noun,,come,manzana
+id,nivel,oracion,en_gramatica,espanol_valido,tipo_error,fenomeno,etiquetas,sujeto,verbo,objeto,pp_adjunta
+1,1,Ella come una manzana.,si,si,ninguno,svo,ella/Prn come/Verb una/Det manzana/Noun,ella,come,manzana,
+2,2,Los perros grandes durmieron.,si,si,ninguno,adjetivo;intransitivo;preterito,los/Det perros/Noun grandes/Adj durmieron/Verb,perros,durmieron,,
+3,2,Él mató un elefante muy gris ayer.,si,si,ninguno,intensificador;adverbio;preterito,él/Prn mató/Verb un/Det elefante/Noun muy/Intens gris/Adj ayer/Adv,él,mató,elefante,
+4,3,Él mató un elefante en sus pijamas.,si,si,ninguno,ambiguedad;pp,él/Prn mató/Verb un/Det elefante/Noun en/Prep sus/Pos pijamas/Noun,él,mató,elefante,ambigua
+5,2,La elefante grises duerme.,no,no,concordancia,concordancia_np,la/Det elefante/Noun grises/Adj duerme/Verb,elefante,duerme,,
+6,2,Los perros come.,no,no,concordancia,concordancia_sv,los/Det perros/Noun come/Verb,perros,come,,
+7,3,Come la manzana.,no,si,sintactico,sujeto_omitido,come/Verb la/Det manzana/Noun,,come,manzana,
 ```
 
 ---
@@ -342,12 +358,13 @@ Una línea JSON por oración del conjunto, **en el mismo orden y con el mismo `i
 |---|---|---|
 | `id` | entero | El `id` de `test_set.csv`. |
 | `sistema` | texto | `parser`, `spacy`, `transformers`, `llm_zero` o `llm_few`. |
-| `acepta` | `true` / `false` / `null` | ¿La oración es válida según el sistema? `null` si el sistema no decide (spaCy y Transformers siempre analizan algo). |
+| `acepta` | `true` / `false` / `null` | ¿La oración es válida según el sistema? `null` si el sistema no decide (spaCy siempre analiza algo). Transformers decide con un modelo de lenguaje (sección 2.6 bis). |
 | `tipo_error` | texto / `null` | `sintactico`, `concordancia` o `null` si acepta o no decide. |
 | `etiquetas` | lista | `[["palabra", "Cat"], ...]`, en minúsculas y sin el punto. `null` si el sistema no etiqueta. |
 | `sujeto` | texto / `null` | Núcleo del sujeto. `""` si detecta que no hay sujeto; `null` si el sistema no lo calcula. |
 | `verbo` | texto / `null` | Verbo principal. |
 | `objeto` | texto / `null` | Núcleo del objeto directo. `""` si no hay; `null` si el sistema no lo calcula. |
+| `pp_adjunta` | texto / `null` | `sustantivo`, `verbo` o `ambigua` para la primera PP; `null` si no hay PP o el sistema no lo calcula. |
 | `arbol` | texto / `null` | Árbol en notación de corchetes (ver abajo). |
 | `num_arboles` | entero / `null` | Cuántos análisis encontró (útil para `ambiguedad`). |
 | `tiempo_ms` | número | Tiempo de procesamiento de la oración, en milisegundos. |
@@ -390,10 +407,11 @@ Las palabras del árbol van en minúsculas, como en `etiquetas`.
 
 | Campo | Parser | spaCy | Transformers | LLM |
 |---|---|---|---|---|
-| `acepta` | ✔ | `null` | `null` | ✔ |
-| `tipo_error` | ✔ | `null` | `null` | ✔ |
+| `acepta` | ✔ | `null` | ✔ (BETO, umbral de PLL) | ✔ |
+| `tipo_error` | ✔ | `null` | `null` (no sabe por qué) | ✔ |
 | `etiquetas` | ✔ (si acepta o falla en el semántico) | ✔ | ✔ | ✔ |
 | `sujeto`, `verbo`, `objeto` | ✔ | ✔ (dependencias) | `null` si el modelo solo hace POS | ✔ |
+| `pp_adjunta` | ✔ (siempre `sustantivo` si hay objeto: regla de la sección 1.4) | ✔ (dependencias) | `null` | ✔ (puede decir `ambigua`) |
 | `arbol` | ✔ | `null` | `null` | ✔ |
 
 #### Ejemplos
@@ -401,14 +419,14 @@ Las palabras del árbol van en minúsculas, como en `etiquetas`.
 Parser propio:
 
 ```json
-{"id": 1, "sistema": "parser", "acepta": true, "tipo_error": null, "etiquetas": [["ella", "Prn"], ["come", "Verb"], ["una", "Det"], ["manzana", "Noun"]], "sujeto": "ella", "verbo": "come", "objeto": "manzana", "arbol": "(S (NP (NPbase (Prn ella))) (VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana))))))", "num_arboles": 1, "tiempo_ms": 0.4, "error_ejecucion": null}
-{"id": 5, "sistema": "parser", "acepta": false, "tipo_error": "concordancia", "etiquetas": [["la", "Det"], ["elefante", "Noun"], ["grises", "Adj"], ["duerme", "Verb"]], "sujeto": "elefante", "verbo": "duerme", "objeto": "", "arbol": null, "num_arboles": null, "tiempo_ms": 0.3, "error_ejecucion": null}
+{"id": 1, "sistema": "parser", "acepta": true, "tipo_error": null, "etiquetas": [["ella", "Prn"], ["come", "Verb"], ["una", "Det"], ["manzana", "Noun"]], "sujeto": "ella", "verbo": "come", "objeto": "manzana", "pp_adjunta": null, "arbol": "(S (NP (NPbase (Prn ella))) (VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana))))))", "num_arboles": 1, "tiempo_ms": 0.4, "error_ejecucion": null}
+{"id": 5, "sistema": "parser", "acepta": false, "tipo_error": "concordancia", "etiquetas": [["la", "Det"], ["elefante", "Noun"], ["grises", "Adj"], ["duerme", "Verb"]], "sujeto": "elefante", "verbo": "duerme", "objeto": "", "pp_adjunta": null, "arbol": null, "num_arboles": null, "tiempo_ms": 0.3, "error_ejecucion": null}
 ```
 
 spaCy:
 
 ```json
-{"id": 1, "sistema": "spacy", "acepta": null, "tipo_error": null, "etiquetas": [["ella", "Prn"], ["come", "Verb"], ["una", "Det"], ["manzana", "Noun"]], "sujeto": "ella", "verbo": "come", "objeto": "manzana", "arbol": null, "num_arboles": null, "tiempo_ms": 6.2, "error_ejecucion": null}
+{"id": 1, "sistema": "spacy", "acepta": null, "tipo_error": null, "etiquetas": [["ella", "Prn"], ["come", "Verb"], ["una", "Det"], ["manzana", "Noun"]], "sujeto": "ella", "verbo": "come", "objeto": "manzana", "pp_adjunta": null, "arbol": null, "num_arboles": null, "tiempo_ms": 6.2, "error_ejecucion": null}
 ```
 
 ---
@@ -438,6 +456,7 @@ Sujeto, verbo y objeto desde las dependencias de spaCy:
 - `verbo`: la palabra con relación `ROOT`.
 - `sujeto`: la palabra con relación `nsubj` cuyo núcleo es el `ROOT`; `""` si no hay.
 - `objeto`: la palabra con relación `obj` cuyo núcleo es el `ROOT`; `""` si no hay.
+- `pp_adjunta`: se toma la primera preposición (`ADP` con relación `case`). Su núcleo es el núcleo de la PP, y el núcleo de **ese** núcleo es a lo que se une la PP: `verbo` si es `VERB` o `AUX`, `sustantivo` si es `NOUN`, `PROPN` o `PRON`, y `null` en otro caso o si no hay PP.
 
 ```python
 CONVERSION = {"PRON": "Prn", "NOUN": "Noun", "PROPN": "Noun", "ADJ": "Adj",
@@ -451,6 +470,17 @@ def categoria(token):
         return "Intens" if antes_del_adj else "Adv"
     return CONVERSION.get(token.pos_, "X")
 
+def pp_adjunta(doc):
+    prep = next((t for t in doc if t.pos_ == "ADP" and t.dep_ == "case"), None)
+    if prep is None:
+        return None
+    unida_a = prep.head.head          # núcleo de la PP -> a qué se une
+    if unida_a.pos_ in ("VERB", "AUX"):
+        return "verbo"
+    if unida_a.pos_ in ("NOUN", "PROPN", "PRON"):
+        return "sustantivo"
+    return None
+
 def salida_spacy(id_, doc, tiempo_ms):
     tokens = [t for t in doc if t.pos_ != "PUNCT"]
     raiz = next((t for t in doc if t.dep_ == "ROOT"), None)
@@ -460,10 +490,27 @@ def salida_spacy(id_, doc, tiempo_ms):
         "id": id_, "sistema": "spacy", "acepta": None, "tipo_error": None,
         "etiquetas": [[t.text.lower(), categoria(t)] for t in tokens],
         "sujeto": rol("nsubj"), "verbo": raiz.text.lower() if raiz else "",
-        "objeto": rol("obj"), "arbol": None, "num_arboles": None,
+        "objeto": rol("obj"), "pp_adjunta": pp_adjunta(doc), "arbol": None, "num_arboles": None,
         "tiempo_ms": tiempo_ms, "error_ejecucion": None,
     }
 ```
+
+---
+
+### 2.6 bis Gramaticalidad con Transformers
+
+Para que Transformers tenga un `acepta` real se usa un modelo de lenguaje con máscara en español, BETO
+(`dccuchile/bert-base-spanish-wwm-cased`), sin entrenar nada (`experiments/acceptability.py`):
+
+- **Puntuación:** pseudo-log-verosimilitud (PLL) promedio por fragmento, con la variante *word-l2r*
+  (se enmascaran también los fragmentos siguientes de la misma palabra). Mayor = más aceptable.
+- **Umbral:** el de mayor exactitud sobre `data/calibration_acceptability.csv` (pares mínimos que no
+  están en el conjunto de prueba).
+- **Decisión:** `acepta = puntuación >= umbral`. `tipo_error` queda en `null`: el modelo no sabe *por
+  qué* una oración está mal.
+
+En `results/transformers.jsonl`, `acepta` viene de BETO y `etiquetas` del etiquetador
+(`wietsedv/xlm-roberta-base-ft-udpos28-es`). `tiempo_ms` suma los dos.
 
 ---
 
@@ -472,7 +519,7 @@ def salida_spacy(id_, doc, tiempo_ms):
 El prompt le pide al LLM que responda **solo** con este JSON, sin texto adicional:
 
 ```json
-{"acepta": true, "tipo_error": null, "etiquetas": [["ella", "Prn"], ["come", "Verb"], ["una", "Det"], ["manzana", "Noun"]], "sujeto": "ella", "verbo": "come", "objeto": "manzana", "arbol": "(S (NP (NPbase (Prn ella))) (VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana))))))"}
+{"acepta": true, "tipo_error": null, "etiquetas": [["ella", "Prn"], ["come", "Verb"], ["una", "Det"], ["manzana", "Noun"]], "sujeto": "ella", "verbo": "come", "objeto": "manzana", "pp_adjunta": null, "arbol": "(S (NP (NPbase (Prn ella))) (VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana))))))"}
 ```
 
 El notebook completa `id`, `sistema`, `num_arboles` (1 si hay árbol), `tiempo_ms` y `error_ejecucion`. Si la respuesta no es un JSON válido, la línea se escribe con `"acepta": null` y `"error_ejecucion": "respuesta_no_json"`, y cuenta como fallo del LLM.
@@ -493,7 +540,7 @@ Este archivo es un entregable obligatorio. Antes de llamar a la API, el notebook
 
 Hay tres comparaciones. Cada sistema participa en las que tienen datos (`null` se excluye).
 
-#### a) Aceptación (parser y LLM)
+#### a) Aceptación (parser, Transformers y LLM)
 
 Se compara `acepta` con `en_gramatica`. La clase positiva es "acepta".
 
@@ -506,7 +553,7 @@ Se compara `acepta` con `en_gramatica`. La clase positiva es "acepta".
 - Cobertura (recall) = VP / (VP + FN)
 - Tasa de rechazo correcto = VN / (VN + FP)
 
-Para el LLM también se calcula contra `espanol_valido`. Si el LLM coincide más con `espanol_valido` que con `en_gramatica`, se está desviando hacia su conocimiento general del español.
+Para Transformers y el LLM también se calcula contra `espanol_valido`. Si coinciden más con `espanol_valido` que con `en_gramatica`, siguen su conocimiento general del español y no nuestras reglas. `tipo_error` no se compara para Transformers, porque siempre es `null`.
 
 #### b) Etiquetado (todos los sistemas)
 
@@ -521,6 +568,17 @@ Si un sistema produce un número distinto de palabras que la oración, la oraci�
 #### c) Funciones sintácticas (todos menos Transformers si solo hace POS)
 
 Se compara `sujeto`, `verbo` y `objeto` con el conjunto, por coincidencia exacta de la palabra. Se reporta el porcentaje de aciertos de cada uno.
+
+#### d) Unión de la frase preposicional (parser, spaCy y LLM)
+
+Se compara `pp_adjunta` con el conjunto, solo en las oraciones que tienen PP (`pp_adjunta` no vacío):
+
+- Exactitud = oraciones con la misma unión que el conjunto / oraciones con PP.
+- Matriz de confusión esperado × predicho (`sustantivo`, `verbo`, `ambigua`, sin respuesta).
+- Detección de ambigüedad: de las oraciones `ambigua`, cuántas marcó el sistema como `ambigua`.
+
+Nuestro parser nunca responde `ambigua` (siempre une la PP al sustantivo más cercano, sección 1.4), así
+que esta métrica muestra el costo del conflicto LL(1) de la gramática.
 
 #### Salida: `results/metrics.csv`
 

@@ -30,6 +30,7 @@ SYSTEMS = ("parser", "spacy", "transformers", "llm_zero", "llm_few")
 LEVELS = (1, 2, 3)
 CATEGORIES = ("Prn", "Det", "Pos", "Noun", "Adj", "Intens", "Adv", "Verb", "Prep", "X")
 ERROR_TYPES = ("sintactico", "concordancia")
+PP_ATTACHMENTS = ("sustantivo", "verbo", "ambigua")
 PHENOMENA = (
     "svo", "intransitivo", "adjetivo", "adverbio", "intensificador", "pp", "posesivo",
     "preterito", "ambiguedad", "concordancia_np", "concordancia_sv", "sujeto_omitido",
@@ -37,7 +38,7 @@ PHENOMENA = (
 )
 TEST_SET_COLUMNS = (
     "id", "nivel", "oracion", "en_gramatica", "espanol_valido", "tipo_error",
-    "fenomeno", "etiquetas", "sujeto", "verbo", "objeto",
+    "fenomeno", "etiquetas", "sujeto", "verbo", "objeto", "pp_adjunta",
 )
 
 
@@ -64,6 +65,7 @@ class TestItem:
     subject: str              # "" if there is no explicit subject
     verb: str
     object: str               # "" if there is no direct object
+    pp_attachment: str | None = None   # first PP: "sustantivo" | "verbo" | "ambigua"; None = no PP
 
     @property
     def words(self) -> list[str]:
@@ -85,6 +87,7 @@ class TestItem:
                 subject=row["sujeto"].strip().lower(),
                 verb=row["verbo"].strip().lower(),
                 object=row["objeto"].strip().lower(),
+                pp_attachment=row["pp_adjunta"].strip() or None,
             )
             item.validate()
         except (KeyError, ValueError) as e:
@@ -120,6 +123,13 @@ class TestItem:
                 raise ValueError(f"{name} '{value}' no es una palabra de la oración")
         if not self.verb:
             raise ValueError("falta el verbo")
+        has_pp = any(category == "Prep" for _, category in self.tags)
+        if self.pp_attachment is not None and self.pp_attachment not in PP_ATTACHMENTS:
+            raise ValueError(f"pp_adjunta debe ser uno de {PP_ATTACHMENTS} o vacío")
+        if has_pp and self.pp_attachment is None:
+            raise ValueError("la oración tiene una preposición: falta pp_adjunta")
+        if not has_pp and self.pp_attachment is not None:
+            raise ValueError("pp_adjunta va vacío si la oración no tiene preposición")
 
 
 def _yes_no(value: str, column: str) -> bool:
@@ -162,6 +172,7 @@ class Prediction:
     subject: str | None = None           # "" = no subject detected; None = not computed
     verb: str | None = None
     object: str | None = None
+    pp_attachment: str | None = None     # "sustantivo" | "verbo" | "ambigua" | None
     tree: str | None = None
     num_trees: int | None = None
     time_ms: float = 0.0
@@ -177,6 +188,7 @@ class Prediction:
             "sujeto": self.subject,
             "verbo": self.verb,
             "objeto": self.object,
+            "pp_adjunta": self.pp_attachment,
             "arbol": self.tree,
             "num_arboles": self.num_trees,
             "tiempo_ms": round(self.time_ms, 3),
@@ -194,6 +206,7 @@ class Prediction:
             subject=d.get("sujeto"),
             verb=d.get("verbo"),
             object=d.get("objeto"),
+            pp_attachment=d.get("pp_adjunta"),
             tree=d.get("arbol"),
             num_trees=d.get("num_arboles"),
             time_ms=d.get("tiempo_ms", 0.0),

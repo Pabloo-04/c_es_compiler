@@ -4,6 +4,7 @@
 jupyterlab>=4.0
 pandas>=2.0
 matplotlib>=3.8
+scikit-learn>=1.4   # matrices de confusión y reportes de clasificación (experiments/reports.py)
 
 # NLP (notebooks/nlp_comparison.ipynb)
 spacy>=3.7

@@ -80,6 +80,31 @@ class Result:
         head = base.child("Prn") or (base.child("Nom").child("Noun") if base.child("Nom") else None)
         return _word(head)
 
+    @property
+    def pp_attachment(self) -> str | None:
+        """What the FIRST PP attaches to: "sustantivo" | "verbo" | None (no PP or no tree)."""
+        return pp_attachment(self.tree) if self.tree is not None else None
+
+
+def pp_attachment(tree: Node) -> str | None:
+    """"sustantivo" if the first PP (left to right) hangs from an NP, "verbo" if
+    it hangs from the VP, None if the sentence has no PP.
+
+    With the flattened trees, NP → NPbase PP* and VP → Verb NP? (PP | Adv)*, so
+    the PP's parent says where it attached. The parser never answers "ambigua":
+    it always attaches to the nearest noun phrase (docs/gramatica_es.md, 1.4).
+    """
+    def visit(node: Node, parent: Node | None):
+        if node.label == "PP" and parent is not None:
+            return {"NP": "sustantivo", "VP": "verbo"}.get(parent.label)
+        for child in node.children:
+            found = visit(child, node)
+            if found is not None:
+                return found
+        return None
+
+    return visit(tree, None)
+
 
 def _word(leaf: Node | None) -> str:
     return leaf.word.lower() if leaf is not None and leaf.word else ""

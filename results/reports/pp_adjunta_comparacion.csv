@@ -1,0 +1,5 @@
+id,oracion,esperado,spacy,spacy_dependencia,parser
+4,Él mató un elefante en sus pijamas.,ambigua,verbo,en → pijamas (obl) → mató,sustantivo
+8,Mi niña comió la manzana con su perro.,verbo,verbo,con → perro (obl) → comió,sustantivo
+9,El perro duerme en sus pijamas.,verbo,verbo,en → pijamas (obl) → duerme,verbo
+10,Ella comió la manzana de su perro.,sustantivo,sustantivo,de → perro (nmod) → manzana,sustantivo
