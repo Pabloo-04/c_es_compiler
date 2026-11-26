@@ -1,0 +1,12 @@
+id,oracion,fenomeno,Parser (CFG),Transformers,LLM zero-shot,LLM few-shot
+7,Come la manzana.,sujeto_omitido,rechaza (sintactico),acepta,rechaza (concordancia),rechaza (sintactico)
+61,Leímos un libro.,"sujeto_omitido, preterito",rechaza (sintactico),acepta,rechaza (sintactico),acepta
+62,Leen las niñas un libro.,orden_libre,rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+63,Compraron ellos los libros ayer.,"orden_libre, preterito, adverbio",rechaza (sintactico),rechaza (None),rechaza (sintactico),rechaza (sintactico)
+64,El perro y el gato duermen.,coordinacion,rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+65,Ella come la manzana y el pan.,coordinacion,rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+66,Los niños comen rápidamente y duermen tranquilamente.,"coordinacion, adverbio",rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+67,La niña que lee un libro come.,subordinada,rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+68,El libro que leí ayer es nuevo.,"subordinada, fuera_lexico",rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+69,Ella no come la manzana.,fuera_lexico,rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)
+70,El perro corre en el parque.,"fuera_lexico, pp",rechaza (sintactico),acepta,rechaza (sintactico),rechaza (sintactico)

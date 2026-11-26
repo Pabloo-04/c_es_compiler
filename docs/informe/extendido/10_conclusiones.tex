@@ -1,0 +1,54 @@
+% Responsable: P1
+\section{Conclusiones}
+\label{sec:conclusiones}
+
+\paragraph{Una CFG describe bien un fragmento del español, y solo ese fragmento.} Con seis no
+terminales y un léxico de 221 palabras, la gramática cubre oraciones con sujeto, verbo, objeto,
+adjetivos, adverbios, frases preposicionales y dos tiempos verbales. Dentro de ese fragmento el
+parser es exacto: acepta las 45 oraciones de la gramática, rechaza las 28 que no lo están por la
+razón correcta, y etiqueta y encuentra el sujeto, el verbo y el objeto sin errores. Pero fuera de
+él no da nada: el 20\,\% del español correcto de nuestro conjunto (sujeto omitido, orden libre,
+coordinación, subordinadas, palabras nuevas) queda rechazado sin análisis.
+
+\paragraph{La concordancia es donde la CFG con rasgos aporta lo que los demás no tienen.} Es el
+único sistema que rechaza las 13 oraciones con error de concordancia, dice qué palabra falla y no
+da falsas alarmas. Los etiquetadores las analizan como oraciones válidas, y la puntuación de un
+modelo de lenguaje las rechaza junto con oraciones correctas poco frecuentes, sin poder decir
+por qué. Separar la concordancia de la gramática, como la verificación semántica de la Fase~1, fue
+lo que la hizo manejable: escribirla en las reglas habría multiplicado la gramática.
+
+\paragraph{La ambigüedad es el límite común.} La gramática no es LL(1) por la frase
+preposicional, y ninguna transformación lo arregla porque la ambigüedad es del idioma. Nuestro
+parser la resuelve con una regla fija que acierta en el 59\,\% de los casos; spaCy y el LLM
+aciertan más porque usan el sentido, pero ningún sistema reconoce las oraciones ambiguas como
+tales.
+
+\paragraph{Los modelos estadísticos ganan en cobertura y pierden en garantías.} XLM-R etiqueta
+el 98\,\% de las palabras de todo el conjunto, y el 100\,\% de las que el parser puede analizar,
+sin léxico ni reglas. Pero un etiquetador no decide la gramaticalidad, y la decisión de BETO
+mezcla gramaticalidad con frecuencia.
+
+\paragraph{Un LLM puede seguir reglas formales, pero no se puede confiar en que lo haga.} Con la
+gramática en el prompt, el LLM decide casi como el parser (exactitud 0.97--0.99 contra las
+reglas) en lugar de seguir su conocimiento del español. Pero justifica algunas decisiones con
+árboles que no cumplen la gramática, y en el caso más claro inventa una derivación que no
+corresponde a la oración. Los ejemplos del \emph{few-shot} mejoran mucho la forma de los árboles
+y poco la decisión.
+
+\paragraph{Limitaciones y trabajo futuro.}
+\begin{itemize}
+  \item El conjunto de prueba tiene 73 oraciones y se etiquetó con la misma gramática que
+    implementa el parser; con más oraciones, y oraciones escritas por otras personas, las
+    diferencias entre sistemas serían más confiables.
+  \item El parser no retrocede: \emph{El gato bajo la mesa duerme} está en la gramática y se
+    rechaza. Un parser con retroceso, o un parser de gráfico que devuelva todos los árboles,
+    resolvería eso y permitiría mostrar las dos lecturas de las oraciones ambiguas.
+  \item La gramática se puede ampliar con sujeto omitido ($S \to VP$, con el sujeto deducido del
+    verbo) y coordinación, que son las construcciones fuera de la gramática más frecuentes.
+  \item El experimento con el LLM usó un solo modelo pequeño; repetirlo con modelos más
+    grandes, como \texttt{gemini-3.8-flash}, diría si los errores en los árboles son de este
+    modelo o del enfoque.
+  \item Un sistema mixto podría combinar lo mejor de cada enfoque: un etiquetador estadístico en
+    lugar del léxico cerrado, y la gramática con rasgos para verificar la estructura y la
+    concordancia sobre esas etiquetas.
+\end{itemize}

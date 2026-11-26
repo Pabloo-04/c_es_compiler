@@ -1,13 +1,34 @@
-% Responsable: P3
+% Responsable: P3  (versión completa en extendido/04_lexer_concordancia_arboles.tex)
 \section{Léxico, concordancia y visualización}
 \label{sec:lexer_concordancia_arboles}
 
-\pendiente{P3}
+\paragraph{Lexer.} Es el de la Fase~1 adaptado: el alfabeto incluye \emph{á, é, í, ó, ú, ü, ñ},
+el texto se normaliza a Unicode NFC, y la categoría ya no sale de una expresión regular sino del
+léxico, porque la misma forma puede ser sustantivo, verbo o adjetivo. Una palabra desconocida
+no es un error léxico: recibe la categoría \texttt{X} y el parser rechaza la oración.
 
-% Contenido esperado:
-\begin{itemize}
-  \item Adaptación del lexer de la Fase 1: alfabeto con tildes y ñ, palabras desconocidas.
-  \item Construcción del léxico con rasgos (formato de data/lexicon.json, tamaño, criterios).
-  \item Verificación de concordancia Det/Pos--Noun--Adj y sujeto--verbo sobre el árbol.
-  \item Visualización de árboles (graphviz / nltk) con figuras de ejemplo.
-\end{itemize}
+\paragraph{Léxico.} \texttt{data/lexicon.json} tiene 221 palabras con su categoría y sus rasgos
+(género, número, persona y tiempo): 52 sustantivos, 58 adjetivos, 7 verbos en presente y
+pretérito (70 formas) y las palabras funcionales. Cinco palabras son ambiguas, como \emph{bajo}.
+
+\paragraph{Analizador semántico (concordancia).} \texttt{spanish/agreement.py} es la versión de
+la Fase~2 del analizador semántico (\texttt{semantico.py}) y la tercera etapa del pipeline. Así
+como en la Fase~1 la tabla de símbolos verificaba reglas que la CFG no expresa, este analizador
+recorre el árbol y verifica que, en cada sintagma nominal, determinante, sustantivo y adjetivo coincidan en género y número, y que
+el núcleo del sujeto coincida con el verbo en número y persona. Un rasgo ausente concuerda con
+todo (adjetivos invariables como \emph{grande}, posesivos sin género). Como trabaja sobre el
+árbol, resuelve la concordancia a distancia: acepta \emph{El perro de los niños come} y rechaza
+\emph{*El perro de los niños comen}.
+
+\paragraph{Visualización.} \texttt{spanish/trees.py} dibuja el árbol en la terminal
+(\texttt{nltk}) o como imagen con Graphviz, con un color por categoría y las palabras que no
+concuerdan en rojo
+(figura~\ref{fig:arbol_concordancia}).
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.42\linewidth]{arbol_concordancia}
+  \caption{Árbol generado por el pipeline para \emph{*La elefante grises duerme}: se deriva,
+    pero el analizador semántico marca en rojo las dos palabras que no concuerdan.}
+  \label{fig:arbol_concordancia}
+\end{figure}

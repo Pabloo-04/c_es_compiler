@@ -1,0 +1,12 @@
+id,oracion,fenomeno,parser,spacy_etiquetas,spacy_funciones,xlmr_etiquetas,beto_acepta
+7,Come la manzana.,sujeto_omitido,rechaza (sintactico),come: Verb→Noun,come / manzana / ∅,come: Verb→Prep,True
+61,Leímos un libro.,"sujeto_omitido, preterito",rechaza (sintactico),✓,✓,✓,True
+62,Leen las niñas un libro.,orden_libre,rechaza (sintactico),leen: Verb→Det,niñas / leen / ∅,✓,True
+63,Compraron ellos los libros ayer.,"orden_libre, preterito, adverbio",rechaza (sintactico),✓,ellos / compraron / ∅,✓,False
+64,El perro y el gato duermen.,coordinacion,rechaza (sintactico),✓,✓,✓,True
+65,Ella come la manzana y el pan.,coordinacion,rechaza (sintactico),✓,✓,✓,True
+66,Los niños comen rápidamente y duermen tranquilamente.,"coordinacion, adverbio",rechaza (sintactico),✓,✓,✓,True
+67,La niña que lee un libro come.,subordinada,rechaza (sintactico),que: X→Prn; come: Verb→Noun,∅ / niña / ∅,que: X→Prn,True
+68,El libro que leí ayer es nuevo.,"subordinada, fuera_lexico",rechaza (sintactico),que: X→Prn,libro / nuevo / ∅,que: X→Prn,True
+69,Ella no come la manzana.,fuera_lexico,rechaza (sintactico),no: X→Adv,✓,no: X→Adv,True
+70,El perro corre en el parque.,"fuera_lexico, pp",rechaza (sintactico),✓,✓,✓,True

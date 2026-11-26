@@ -163,7 +163,8 @@ def show(result: Result, args: argparse.Namespace) -> None:
     if result.tree is not None and args.png:
         from .trees import render
 
-        print(f"\nÁrbol guardado en {render(result.tree, args.png)}")
+        # Pass the agreement errors so the words that break agreement are drawn in red.
+        print(f"\nÁrbol guardado en {render(result.tree, args.png, errors=result.errors)}")
     if result.tree is not None:
         print(f"\nSujeto: {result.subject or '—'} · Verbo: {result.verb or '—'} · Objeto: {result.object or '—'}")
     for error in sort_by_position(result.errors):

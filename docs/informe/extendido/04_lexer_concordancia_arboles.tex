@@ -1,0 +1,107 @@
+% Responsable: P3
+\section{Léxico, concordancia y visualización}
+\label{sec:lexer_concordancia_arboles}
+
+\subsection{El lexer}
+
+El lexer (\texttt{spanish/lexer.py}) es una adaptación del de la Fase~1. Recorre la oración
+carácter por carácter, agrupa las letras en palabras y, como antes, reporta los errores y sigue
+en lugar de detenerse. Los cambios respecto a la Fase~1 son:
+\begin{itemize}
+  \item \textbf{Alfabeto.} Las 26 letras latinas más \emph{á, é, í, ó, ú, ü, ñ} y sus mayúsculas.
+    No se usa \texttt{str.isalpha()}, que también aceptaría letras de otros alfabetos
+    (cirílicas, griegas o \emph{ç}); esas se reportan como caracteres inválidos.
+  \item \textbf{Normalización.} Algunos sistemas guardan \emph{é} como \emph{e} más un acento
+    combinado (forma NFD). El texto se normaliza a NFC para que cada letra acentuada sea un solo
+    carácter y coincida con el léxico.
+  \item \textbf{Puntuación.} Se ignora un único signo final (\texttt{.}, \texttt{!} o
+    \texttt{?}); cualquier otro signo es un error léxico.
+  \item \textbf{La categoría viene del léxico, no de la forma.} En la Fase~1 una expresión regular
+    decidía si un token era un número o un identificador. En español la misma forma puede ser
+    sustantivo, verbo o adjetivo, así que cada palabra recibe todas sus lecturas del léxico y el
+    parser elige (sección~\ref{sec:parser}).
+  \item \textbf{Palabras desconocidas.} Una palabra que no está en el léxico no es un error
+    léxico: recibe la categoría \texttt{X} (fuera de la gramática) y el parser rechaza la oración
+    con error sintáctico. Así la salida conserva la etiqueta de cada palabra.
+\end{itemize}
+
+\subsection{El léxico}
+
+El léxico (\texttt{data/lexicon.json}) tiene 221 palabras. Cada una lleva su categoría y sus
+rasgos:
+\begin{lstlisting}
+"niña":  {"cat": "Noun", "gen": "f", "num": "sg"},
+"mató":  {"cat": "Verb", "lema": "matar", "tiempo": "pret", "pers": 3, "num": "sg"},
+"bajo":  [{"cat": "Adj", "gen": "m", "num": "sg"}, {"cat": "Prep"}],
+\end{lstlisting}
+Una palabra ambigua lleva una lista de entradas, como \emph{bajo}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lrl}
+    \toprule
+    Categoría & Lecturas & Rasgos \\
+    \midrule
+    \textit{Prn} (pronombre) & 8 & género, número, persona \\
+    \textit{Det} (determinante) & 8 & género, número \\
+    \textit{Pos} (posesivo) & 6 & número \\
+    \textit{Noun} (sustantivo) & 52 & género, número \\
+    \textit{Adj} (adjetivo) & 58 & género (salvo invariables), número \\
+    \textit{Intens} (intensificador) & 4 & --- \\
+    \textit{Adv} (adverbio) & 9 & --- \\
+    \textit{Prep} (preposición) & 11 & --- \\
+    \textit{Verb} (verbo) & 70 & tiempo, persona, número \\
+    \bottomrule
+  \end{tabular}
+  \caption{Contenido del léxico. Los verbos son 7 (\emph{buscar, comer, comprar, dormir, leer,
+    matar, ver}) en presente y pretérito, en cinco personas (todas menos la segunda del plural,
+    porque el léxico no incluye \emph{vosotros}). Hay más lecturas que palabras porque cinco
+    palabras son ambiguas.}
+  \label{tab:lexico}
+\end{table}
+
+El vocabulario se eligió para cubrir el conjunto de prueba: sustantivos de los dos géneros en
+singular y plural, adjetivos variables (\emph{rojo, roja, rojos, rojas}) e invariables
+(\emph{grande, gris}), los tres tipos de sujeto y las tres personas gramaticales. Los dos tiempos verbales se
+resuelven en el léxico con el rasgo \texttt{tiempo}, sin reglas nuevas en la gramática.
+
+\subsection{Verificación de la concordancia}
+
+El analizador de concordancia (\texttt{spanish/agreement.py}) es la versión de la Fase~2 del
+analizador semántico. Recorre el árbol que construyó el parser y aplica dos reglas:
+\begin{enumerate}
+  \item \textbf{Dentro de cada sintagma nominal}, el determinante o posesivo y el adjetivo deben
+    coincidir en género y número con el sustantivo. Se revisan todos los sintagmas nominales del
+    árbol: el sujeto, el objeto y los que están dentro de frases preposicionales.
+  \item \textbf{Sujeto-verbo}: el núcleo del sujeto y el verbo deben coincidir en número y
+    persona. Los sustantivos son de tercera persona; los pronombres llevan la suya.
+\end{enumerate}
+Un rasgo ausente concuerda con cualquier valor. Así se tratan los adjetivos invariables
+(\emph{grande} no tiene género) y los posesivos, que solo marcan número (\emph{su}, \emph{sus}).
+Como la verificación se hace sobre el árbol y no sobre palabras vecinas, funciona a distancia:
+en \emph{El perro de los niños come} el verbo concuerda con \emph{perro}, el núcleo del sujeto,
+y no con \emph{niños}, la palabra más cercana. Por eso se acepta, mientras que
+\emph{*El perro de los niños comen} se rechaza.
+
+Cada error se reporta en la palabra que rompe la concordancia y dice qué rasgo falla, por
+ejemplo: \emph{el adjetivo `grises' no concuerda en número con `elefante'}.
+
+\subsection{Visualización}
+
+\texttt{spanish/trees.py} dibuja los árboles de dos formas: en la terminal, con
+\texttt{nltk} (opción \texttt{--arbol} del pipeline), y como imagen PNG, SVG o PDF con Graphviz
+(opción \texttt{--png}). En la imagen cada categoría tiene su color y las palabras que rompen la
+concordancia aparecen en rojo, como en la figura~\ref{fig:arbol_concordancia}.
+
+\begin{figure}[h]
+  \centering
+  \begin{forest} sintaxis
+    [S [NP [NPbase [Det [\textcolor{red}{la}]]
+                   [Nom [Noun [elefante]] [AdjP [Adj [\textcolor{red}{grises}]]]]]]
+       [VP [Verb [duerme]]]]
+  \end{forest}
+  \caption{\emph{*La elefante grises duerme}: la gramática la deriva y el analizador de
+    concordancia marca las dos palabras que no concuerdan con \emph{elefante}.}
+  \label{fig:arbol_concordancia}
+\end{figure}

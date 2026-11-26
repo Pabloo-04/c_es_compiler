@@ -106,8 +106,8 @@ formas de árbol, y se le pide responder solo con el JSON acordado, en dos versi
 3. Correr una prueba con pocas oraciones y después el experimento completo:
 
    ```bash
-   python -m experiments.llm_experiment --proveedor gemini --modelo gemini-2.5-flash --limite 3
-   python -m experiments.llm_experiment --proveedor gemini --modelo gemini-2.5-flash --pausa 5
+   python -m experiments.llm_experiment --proveedor gemini --modelo gemini-3.8-flash --limite 3
+   python -m experiments.llm_experiment --proveedor gemini --modelo gemini-3.8-flash --pausa 5
    ```
 
    - `--modelo` es obligatorio con una API: el nombre exacto que muestra el proveedor (va al log

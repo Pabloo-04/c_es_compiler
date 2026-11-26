@@ -3,8 +3,8 @@
 This is the `experimento_llm.py` of the assignment. notebooks/llm_experiment.ipynb
 uses it, and it also runs from the terminal:
 
-    python -m experiments.llm_experiment --proveedor gemini --modelo gemini-2.5-flash --limite 3
-    python -m experiments.llm_experiment --proveedor gemini --modelo gemini-2.5-flash --pausa 5
+    python -m experiments.llm_experiment --proveedor gemini --modelo gemini-3.8-flash --limite 3
+    python -m experiments.llm_experiment --proveedor gemini --modelo gemini-3.8-flash --pausa 5
 
 Two versions (experiments/prompts.py):
   - llm_zero: rules + lexicon only.
@@ -92,7 +92,7 @@ def run(
     predictions = []
     new_calls = 0
     for item in items:
-        cached = find_in_log(item.id, system, log_path)
+        cached = find_in_log(item.id, system, log_path, model=model)
         if cached is None:
             if limit is not None and new_calls >= limit:
                 break
@@ -103,7 +103,7 @@ def run(
         raw = ask_llm(build_prompt(item.sentence), id=item.id, system=system,
                       provider=provider, model=model, temperature=temperature, log_path=log_path)
         # Time of the real API call (kept in the log), so a rerun reports the same.
-        entry = find_in_log(item.id, system, log_path) or {}
+        entry = find_in_log(item.id, system, log_path, model=model) or {}
         time_ms = entry.get("tiempo_ms", (time.perf_counter() - start) * 1000)
         prediction = to_prediction(item, raw, system, time_ms)
         predictions.append(prediction)

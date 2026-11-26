@@ -1,0 +1,4 @@
+sistema,ms_mediana,ms_primera_oracion,en_disco
+Parser (CFG),0.013,1.12,código + léxico de 14 KB
+spaCy,1.577,2.903,16 MB (es_core_news_sm)
+Transformers,61.392,2688.035,"1,1 GB (XLM-R) + 440 MB (BETO)"
