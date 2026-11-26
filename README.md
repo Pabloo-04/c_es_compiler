@@ -88,20 +88,43 @@ resultados en el mismo formato en `results/` (ver [docs/gramatica_es.md (Parte 2
 | --- | --- | --- |
 | 1. Nuestro parser | `python -m evaluation.run_parser` | `results/parser.jsonl` |
 | 2. spaCy y Transformers | `jupyter lab notebooks/nlp_comparison.ipynb` | `results/spacy.jsonl`, `results/transformers.jsonl` |
-| 3. LLM (zero-shot y few-shot) | `jupyter lab notebooks/llm_experiment.ipynb` | `results/llm_zero.jsonl`, `results/llm_few.jsonl` |
+| 3. LLM (zero-shot y few-shot) | `python -m experiments.llm_experiment ...` y `notebooks/llm_experiment.ipynb` | `results/llm_zero.jsonl`, `results/llm_few.jsonl`, `results/logs/llm.jsonl` |
 | 4. Métricas | `python -m evaluation.metrics` | tablas y `results/figures/` |
 
-**Experimento con el LLM.** El proveedor se elige en la primera celda de configuración del
-notebook (`PROVIDER`). La clave de API va en un archivo `.env` en la raíz del repositorio,
-que no se sube a Git:
+**Experimento con el LLM.** Se le dan al LLM las reglas de la gramática, el léxico y las
+formas de árbol, y se le pide responder solo con el JSON acordado, en dos versiones: `llm_zero`
+(solo reglas) y `llm_few` (reglas más cinco ejemplos resueltos, fijos y fuera del conjunto de prueba).
 
-```
-ANTHROPIC_API_KEY=...
-```
+1. Instalar el SDK del proveedor: `pip install google-genai` (Gemini) o `pip install anthropic` (Claude).
+2. Poner la clave en un archivo `.env` en la raíz del repositorio, que no se sube a Git:
 
-Con `PROVIDER = "manual"` no hace falta clave: el notebook muestra cada prompt y se pega la
-respuesta de cualquier chat. Todos los prompts y respuestas quedan en
-`results/logs/llm.jsonl`. Si una oración ya está en el log, se reutiliza la respuesta en lugar de volver a llamar a la API.
+   ```
+   GOOGLE_API_KEY=...        # Gemini (Google AI Studio; tiene capa gratuita)
+   ANTHROPIC_API_KEY=...     # Claude
+   ```
+
+3. Correr una prueba con pocas oraciones y después el experimento completo:
+
+   ```bash
+   python -m experiments.llm_experiment --proveedor gemini --modelo gemini-2.5-flash --limite 3
+   python -m experiments.llm_experiment --proveedor gemini --modelo gemini-2.5-flash --pausa 5
+   ```
+
+   - `--modelo` es obligatorio con una API: el nombre exacto que muestra el proveedor (va al log
+     y al informe). Los modelos actuales de Claude no aceptan temperatura y no se les envía.
+   - `--pausa` espera antes de cada llamada nueva (la capa gratuita limita las solicitudes por
+     minuto); ante un límite de uso o un modelo saturado, el cliente espera y reintenta.
+   - Cada respuesta se guarda en `results/logs/llm.jsonl` y se reutiliza si la oración ya está:
+     si la corrida se corta, basta con repetir el comando. Para volver a preguntar con otro
+     modelo, mover o borrar el log antes.
+   - `--limite` no guarda `results/llm_*.jsonl` (el formato exige todas las oraciones), pero sus
+     respuestas quedan en el log y la corrida completa las reutiliza.
+   - Con `--proveedor manual` no hace falta clave: se muestra cada prompt y se pega la respuesta
+     de cualquier chat, terminando con una línea `FIN`.
+
+4. Analizar los resultados en `notebooks/llm_experiment.ipynb` (sección 3): coincidencia con las
+   reglas frente al español, desviación, árboles, aciertos por nivel y fenómeno, formato y costo.
+   Para comparar los árboles con los del parser, correr antes `python -m evaluation.run_parser`.
 
 ## Pruebas
 
@@ -114,6 +137,7 @@ pytest
 | `test_contracts.py` | Palabras, árboles (formato entre paréntesis) y mensajes de error |
 | `test_grammar_and_data.py` | Que la gramática esté bien formada y que el léxico y el set de prueba sean coherentes con ella |
 | `test_formats_and_prompts.py` | El formato de resultados y los prompts del LLM |
+| `test_llm_experiment.py` | Corrida del experimento con el LLM, log, ejemplos del few-shot y análisis (sin API) |
 | `test_lexer.py` | Palabras, posiciones, tildes y palabras desconocidas |
 | `test_parser.py` | Árboles de oraciones válidas y rechazo de las que están fuera de la gramática |
 | `test_agreement.py` | Concordancia Det/Pos–Noun–Adj y sujeto–verbo |
@@ -147,7 +171,9 @@ c_compiler/
 │   ├── acceptability.py        # gramaticalidad con BETO (pseudo-log-verosimilitud y umbral)
 │   ├── hf_loading.py           # descarga solo los archivos necesarios de cada modelo
 │   ├── llm_client.py           # cliente intercambiable del LLM y registro de llamadas
-│   └── prompts.py              # prompts zero-shot y few-shot
+│   ├── prompts.py              # prompts zero-shot y few-shot y lectura de respuestas
+│   ├── llm_experiment.py       # corre el experimento con el LLM
+│   └── llm_analysis.py         # métricas propias del experimento con el LLM
 ├── notebooks/
 │   ├── nlp_comparison.ipynb    # spaCy y Transformers
 │   └── llm_experiment.ipynb    # experimento con el LLM
