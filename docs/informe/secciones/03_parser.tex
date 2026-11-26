@@ -1,0 +1,35 @@
+% Responsable: P2  (versión completa en extendido/03_parser.tex)
+\section{Implementación del parser}
+\label{sec:parser}
+
+El parser (\texttt{spanish/parser.py}) es descendente recursivo: cada no terminal es un método
+(\texttt{sentence}, \texttt{noun\_phrase}, \texttt{verb\_phrase}…). Las reglas con
+$\varepsilon$ son un \texttt{if} y las reglas $X' \to \alpha X' \mid \varepsilon$ son un
+\texttt{while}, ambos guiados por el conjunto FIRST de la palabra actual. Una oración se acepta
+solo si se construye el árbol y no sobran palabras.
+
+\paragraph{Palabras ambiguas.} El lexer entrega todas las lecturas de cada palabra y el parser
+toma la que pide su posición: en \emph{El gato duerme bajo la mesa}, \emph{bajo} es preposición;
+en \emph{El hombre bajo come}, adjetivo. Sin retroceso, esto falla en un caso que la gramática sí
+genera: en \emph{El gato bajo la mesa duerme} el parser toma \emph{bajo} como adjetivo y luego no
+puede seguir. Resolverlo requiere retroceso o un parser de gráfico.
+
+\paragraph{Pipeline.} \texttt{spanish/pipeline.py} encadena lexer, parser, analizador de
+concordancia y visualización; si una etapa falla, la siguiente no se ejecuta. Cada error indica
+la palabra y la causa:
+\begin{center}
+  \small
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{ll}
+    \toprule
+    Oración & Salida \\
+    \midrule
+    \emph{El perro corre en el parque.} & sintáctico, palabra 3: `corre' no está en la gramática \\
+    \emph{Come la manzana.} & sintáctico, palabra 1: se esperaba un pronombre, determinante o posesivo \\
+    \emph{Los perros come.} & concordancia, palabra 3: el verbo `come' (singular) no concuerda con `perros' (plural) \\
+    \bottomrule
+  \end{tabular}}
+\end{center}
+El resultado incluye además las etiquetas, el sujeto, el verbo, el objeto y la unión de la
+frase preposicional, que se sacan del árbol. Hay 220 pruebas automáticas; una de ellas pasa las
+73 oraciones del conjunto de prueba por el pipeline completo.

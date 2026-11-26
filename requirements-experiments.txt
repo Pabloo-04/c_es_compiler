@@ -1,0 +1,17 @@
+# Experimentos (notebooks). Instalar además de requirements.txt:
+#   pip install -r requirements.txt -r requirements-experiments.txt
+#   python -m spacy download es_core_news_sm
+jupyterlab>=4.0
+pandas>=2.0
+matplotlib>=3.8
+scikit-learn>=1.4   # matrices de confusión y reportes de clasificación (experiments/reports.py)
+
+# NLP (notebooks/nlp_comparison.ipynb)
+spacy>=3.7
+transformers>=4.40
+torch>=2.2
+
+# LLM (notebooks/llm_experiment.ipynb): instalar SOLO el SDK del proveedor elegido.
+# anthropic
+# openai
+# google-genai

@@ -1,0 +1,75 @@
+% Responsable: P4  (versión completa en extendido/06_resultados.tex)
+\section{Resultados}
+\label{sec:resultados}
+
+\subsection{Aceptación y clasificación de errores}
+
+\begin{table}[h]
+  \centering
+  \small
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lrrrrrrrr|r}
+    \toprule
+    & \multicolumn{8}{c|}{Contra \texttt{en\_gramatica} (las reglas)} & Contra el español \\
+    Sistema & VP & FP & FN & VN & Precisión & Cobertura & Rechazo & Exactitud & Exactitud \\
+    \midrule
+    Parser propio & 45 & 0 & 0 & 28 & 1.00 & 1.00 & 1.00 & 1.00 & 0.85 \\
+    Transformers (BETO) & 36 & 11 & 9 & 17 & 0.77 & 0.80 & 0.61 & 0.73 & 0.85 \\
+    LLM \emph{zero-shot} & 43 & 0 & 2 & 28 & 1.00 & 0.96 & 1.00 & 0.97 & 0.82 \\
+    LLM \emph{few-shot} & 45 & 1 & 0 & 27 & 0.98 & 1.00 & 0.96 & 0.99 & 0.86 \\
+    \bottomrule
+  \end{tabular}}
+  \caption{Aceptación de las 73 oraciones. spaCy no decide la gramaticalidad.}
+  \label{tab:aceptacion}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.75\linewidth]{reglas_vs_espanol}
+  \caption{Exactitud de la aceptación contra las reglas y contra el español.}
+  \label{fig:reglas_vs_espanol}
+\end{figure}
+
+El parser acepta las 45 oraciones de la gramática, rechaza las 28 restantes y da el tipo de
+error correcto en todas (15 sintácticas y 13 de concordancia). Esto muestra que la
+implementación es fiel a la especificación. Contra el español su exactitud baja a 0.85: nunca
+acepta español incorrecto, pero rechaza las 11 oraciones correctas fuera de la gramática.
+
+Los otros dos sistemas que deciden se comportan de forma opuesta (figura~\ref{fig:reglas_vs_espanol}).
+Transformers sigue el español: tiene 11 falsos positivos, 10 de ellos oraciones correctas fuera
+de la gramática, y 9 falsos negativos, oraciones correctas que rechaza por tener palabras poco
+frecuentes. El LLM sigue las reglas: 2 errores en \emph{zero-shot} y 1 en \emph{few-shot}, y da
+el tipo de error correcto en el 96\,\% y el 100\,\% de sus rechazos.
+
+\subsection{Etiquetado, funciones y frase preposicional}
+
+\begin{table}[h]
+  \centering
+  \small
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Sistema & Palabras mal etiquetadas & Etiquetado & Sujeto & Verbo & Objeto & Unión de la PP \\
+    \midrule
+    Parser propio & 0 / 304 & 1.00 & 1.00 & 1.00 & 1.00 & 10 / 17 \\
+    spaCy & 22 / 381 & 0.94 & 0.88 & 0.86 & 0.92 & 13 / 17 \\
+    Transformers (XLM-R) & 6 / 381 & 0.98 & --- & --- & --- & --- \\
+    LLM \emph{zero-shot} & 3 / 381 & 0.99 & 0.93 & 0.93 & 0.99 & 15 / 17 \\
+    LLM \emph{few-shot} & 3 / 381 & 0.99 & 0.97 & 0.96 & 1.00 & 14 / 17 \\
+    \bottomrule
+  \end{tabular}}
+  \caption{Errores de etiquetado y exactitud del análisis. El parser solo analiza las 58
+    oraciones que puede derivar (304 palabras).}
+  \label{tab:analisis}
+\end{table}
+
+El parser no se equivoca en ninguna palabra, pero solo produce análisis para 58 de las 73
+oraciones. Los demás sistemas analizan las 73; el más exacto es el LLM, y el que más falla es
+spaCy, sobre todo en verbos de oraciones cortas (\emph{El perro come}). En la unión de la frase
+preposicional el parser es el peor (10 de 17): su regla fija falla cada vez que un hablante une
+la frase al verbo y hay un objeto (\emph{Mi niña comió la manzana con su perro}). spaCy y el LLM
+deciden por el sentido y aciertan más. Ningún sistema reconoce las 2 oraciones ambiguas: todos
+eligen una lectura sin avisar.
+
+Por nivel, el parser se mantiene en 1.00 contra las reglas; el LLM baja a 0.96 en el nivel 3
+y Transformers cae de 0.75 en el nivel 1 a 0.54 en el nivel 3.

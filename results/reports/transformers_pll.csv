@@ -1,0 +1,74 @@
+id,oracion,puntuacion,acepta,espanol_valido,en_gramatica
+1,Ella come una manzana.,-1.8722838586196304,True,True,True
+2,Los perros grandes durmieron.,-6.664851072554787,False,True,True
+3,Él mató un elefante muy gris ayer.,-6.186245118785235,False,True,True
+4,Él mató un elefante en sus pijamas.,-5.62754729622975,False,True,True
+5,La elefante grises duerme.,-7.170109191909432,False,False,False
+6,Los perros come.,-4.463948458433151,False,False,False
+7,Come la manzana.,-3.2361317151226103,True,True,False
+8,Mi niña comió la manzana con su perro.,-3.4292046051058502,True,True,True
+9,El perro duerme en sus pijamas.,-1.9987390536116436,True,True,True
+10,Ella comió la manzana de su perro.,-2.3679704836104065,True,True,True
+11,El perro come.,-2.5288913622498512,True,True,True
+12,Los gatos duermen.,-5.410080254077911,False,True,True
+13,Yo leo un libro.,-1.705780555307865,True,True,True
+14,Tú compras las manzanas.,-2.817934218049049,True,True,True
+15,Nosotros vimos un pájaro.,-2.533419134095311,True,True,True
+16,La niña busca la pelota.,-3.0158334684868655,True,True,True
+17,Ellas leyeron las cartas.,-2.7378371140609183,True,True,True
+18,El profesor lee.,-3.3789492286741734,True,True,True
+19,Mi perro duerme.,-4.646147180348635,False,True,True
+20,Los niños comieron el pan.,-1.2218459001077073,True,True,True
+21,Ella mató un ratón.,-3.7626630790531634,True,True,True
+22,Las mujeres compran los libros.,-1.3799124700682504,True,True,True
+23,Un hombre busca una casa.,-1.6532127006600301,True,True,True
+24,Nosotras dormimos.,-8.106622894605001,False,True,True
+25,El gato vio un pájaro.,-3.445912296573321,True,True,True
+26,Él come el pan.,-6.4474260459343595,False,True,True
+27,Tus perras comen.,-6.386675798892975,False,True,True
+28,Ellos buscaron sus libros.,-3.3135512533287206,True,True,True
+29,La profesora compró una mesa.,-3.2419104982788363,True,True,True
+30,El perro negro come.,-3.947220873832703,False,True,True
+31,La niña pequeña lee un libro nuevo.,-1.6673021712340415,True,True,True
+32,Los pájaros blancos duermen ahora.,-2.944811029891883,True,True,True
+33,Ella comió la manzana roja ayer.,-2.6898223406502177,True,True,True
+34,El hombre muy alto busca su perro.,-3.588845384772867,True,True,True
+35,Las niñas leen rápidamente.,-3.255141678887109,True,True,True
+36,Yo compré unas manzanas verdes.,-2.83550615174075,True,True,True
+37,El gato duerme sobre la mesa.,-1.7942597683785217,True,True,True
+38,Nosotros leemos en el parque.,-3.057260573176401,True,True,True
+39,La profesora lee un libro bastante fácil.,-2.840872911736369,True,True,True
+40,Mi gata hambrienta come el pan.,-2.774766482464555,True,True,True
+41,Los niños felices compraron una pelota azul.,-2.925211395447453,True,True,True
+42,El gato duerme bajo la mesa.,-2.0177403478217975,True,True,True
+43,La perro come.,-6.39912972599268,False,False,False
+44,El gato negros duerme.,-6.825162090361118,False,False,False
+45,Ella lee mi libros.,-4.824920187145471,False,False,False
+46,La profesora alto lee.,-6.026497757434845,False,False,False
+47,La niña comen el pan.,-3.512329629311959,True,False,False
+48,Yo come una manzana.,-4.565342576801777,False,False,False
+49,Nosotros compró los libros.,-5.282191632688045,False,False,False
+50,Ellas duerme.,-7.9735391065478325,False,False,False
+51,El gato come muy.,-4.473230558633804,False,False,False
+52,Ellos ven los árboles altos desde la casa.,-2.3735449825310044,True,True,True
+53,Mi perro vio un gato en el jardín.,-2.5767357780908546,True,True,True
+54,La profesora leyó las cartas de los niños en la escuela.,-1.445409696859618,True,True,True
+55,Las mujeres jóvenes compraron unas manzanas muy rojas para sus niños.,-2.6238233119320986,True,True,True
+56,El niño pequeño buscó su pelota azul en el parque ayer.,-2.766383290717689,True,True,True
+57,El perro de los niños come.,-2.643100230023265,True,True,True
+58,El perro de los niños comen.,-4.441693659339633,False,False,False
+59,Los gatos de la mujer duerme.,-4.0033556797674725,False,False,False
+60,Ella vio el gato de las niña.,-4.780643932521343,False,False,False
+61,Leímos un libro.,-2.6929231733083725,True,True,False
+62,Leen las niñas un libro.,-2.498327204159328,True,True,False
+63,Compraron ellos los libros ayer.,-4.625418935503278,False,True,False
+64,El perro y el gato duermen.,-2.075588418469124,True,True,False
+65,Ella come la manzana y el pan.,-1.8782072343165055,True,True,False
+66,Los niños comen rápidamente y duermen tranquilamente.,-1.6271727281768107,True,True,False
+67,La niña que lee un libro come.,-2.411645486485213,True,True,False
+68,El libro que leí ayer es nuevo.,-1.5309459519266966,True,True,False
+69,Ella no come la manzana.,-1.9779173370140295,True,True,False
+70,El perro corre en el parque.,-2.4644117475088154,True,True,False
+71,Perro el come.,-6.999794274568558,False,False,False
+72,La niña lee un.,-5.694467711448669,False,False,False
+73,El elefante grande muy duerme.,-6.215273107091586,False,False,False

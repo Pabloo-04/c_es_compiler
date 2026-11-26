@@ -1,0 +1,9 @@
+sistema,referencia,nivel 1,nivel 2,nivel 3,todos
+Parser (CFG),en_gramatica,1.0,1.0,1.0,1.0
+Parser (CFG),espanol_valido,1.0,1.0,0.5417,0.8493
+Transformers,en_gramatica,0.75,0.8621,0.5417,0.726
+Transformers,espanol_valido,0.75,0.8621,0.9167,0.8493
+LLM zero-shot,en_gramatica,1.0,0.9655,0.9583,0.9726
+LLM zero-shot,espanol_valido,1.0,0.9655,0.5,0.8219
+LLM few-shot,en_gramatica,1.0,1.0,0.9583,0.9863
+LLM few-shot,espanol_valido,1.0,1.0,0.5833,0.863

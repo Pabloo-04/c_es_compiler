@@ -1,0 +1,46 @@
+% Responsable: P5  (versión completa en extendido/08_analisis_llm.tex)
+\section{Experimento con el LLM}
+\label{sec:analisis_llm}
+
+Le dimos a \texttt{gemini-3.5-flash-lite} (temperatura 0) la gramática sin recursión por la
+izquierda, el léxico, las formas de árbol permitidas y la instrucción de usar \emph{solo} esas
+reglas ``aunque conozcas otras construcciones válidas del español''; debía responder un JSON
+con la decisión, el tipo de error, las etiquetas, las funciones y el árbol. La versión
+\emph{few-shot} agrega cinco ejemplos resueltos que no están en el conjunto de prueba. Los 146
+prompts y respuestas están en \texttt{results/logs/llm.jsonl}.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lrr}
+    \toprule
+    & \emph{Zero-shot} & \emph{Few-shot} \\
+    \midrule
+    Exactitud contra las reglas / contra el español & 0.97 / 0.82 & 0.99 / 0.86 \\
+    Acepta español correcto fuera de la gramática & 0 / 11 & 1 / 11 \\
+    Acepta español incorrecto & 0 / 17 & 0 / 17 \\
+    Árboles con las formas de la gramática & 67\,\% & 96\,\% \\
+    Árboles iguales al del parser & 49\,\% & 82\,\% \\
+    \bottomrule
+  \end{tabular}
+  \caption{Resultados del LLM; los árboles se evalúan en las oraciones que acepta.}
+  \label{tab:llm}
+\end{table}
+
+\paragraph{(a) ¿Respeta las reglas?} Sí, en la decisión. Su exactitud contra las reglas supera a
+la del español, al contrario de Transformers: rechaza \emph{El perro y el gato duermen} o
+\emph{La niña que lee un libro come}, que sabe que son español correcto. Pero cuando fuerza una
+regla puede aplicarla mal. La única desviación del \emph{few-shot} acepta \emph{Leímos un
+libro} con el árbol \arbol{(S (NP un libro) (VP leímos))}: convierte el objeto en sujeto para
+encajar en $S \to NP\ VP$, sin notar que no concuerdan.
+
+\paragraph{(b) ¿Dónde acierta y dónde falla?} Decide bien casi todo el nivel 1 y 2; sus errores
+están en oraciones con \emph{sus pijamas}, que \emph{zero-shot} rechaza aunque son correctas, y
+en el tipo de error de \emph{Come la manzana}. Es el mejor en etiquetado (0.99) y en la unión de
+la frase preposicional (15 de 17), pero nunca usa la respuesta \texttt{ambigua}, aunque el prompt
+la ofrece. Sus árboles son el punto débil: en \emph{zero-shot}, uno de cada tres no respeta la
+gramática (por ejemplo, \arbol{(NPbase ella)} sin la categoría \textit{Prn}).
+
+\paragraph{(c) ¿Mejora el \emph{few-shot}?} Sobre todo en la forma: los árboles válidos pasan del
+67\,\% al 96\,\%. La decisión mejora poco (de 0.97 a 0.99) y aparece la desviación de
+\emph{Leímos un libro}.

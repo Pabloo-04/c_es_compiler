@@ -1,0 +1,5 @@
+grupo,oraciones,acepta: Parser (CFG),acepta: Transformers,etiquetas ok: Parser (CFG),etiquetas ok: spaCy,etiquetas ok: Transformers,etiquetas ok: BETO-POS,funciones ok: Parser (CFG),funciones ok: spaCy
+1. en la gramática,45,45,36,45,38,45,41,45,40
+"2. fuera de la gramática, español válido",11,0,10,0,6,7,10,0,6
+3. error de concordancia,13,0,1,13,9,13,13,13,9
+"4. error sintáctico, no es español",4,0,0,0,1,3,4,0,3

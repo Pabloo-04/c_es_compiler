@@ -1,0 +1,63 @@
+% Responsable: P1  (versión completa en extendido/02_gramatica.tex)
+\section{Diseño de la gramática}
+\label{sec:gramatica}
+
+Partimos de la gramática de ejemplo de Luque~\cite{luque} y le agregamos lo que pide el
+enunciado (reglas con $\star$). Es $G = (V, \Sigma, R, S)$ con
+$V = \{S, NP, Nom, AdjP, VP, PP\}$, las categorías léxicas como terminales y
+\begin{align*}
+  S    &\to NP\ VP &
+  NP   &\to \textit{Prn} \mid \textit{Det}\ Nom \mid \textit{Pos}\ Nom \mid NP\ PP \\
+  Nom  &\to \textit{Noun} \mid \textit{Noun}\ AdjP\ \star &
+  AdjP &\to \textit{Adj} \mid \textit{Intens}\ \textit{Adj}\ \star \\
+  VP   &\to \textit{Verb}\ NP \mid VP\ PP \mid \textit{Verb}\ \star &
+  PP   &\to \textit{Prep}\ NP \\
+       &\phantom{\to}\ \mid VP\ \textit{Adv}\ \star
+\end{align*}
+Así cubre sujeto-verbo-objeto, adjetivos, adverbios y frases preposicionales. Los dos tiempos
+verbales (presente y pretérito) y los rasgos de concordancia están en el léxico. Para el parser
+descendente eliminamos la recursión por la izquierda de $NP \to NP\ PP$, $VP \to VP\ PP$ y
+$VP \to VP\ \textit{Adv}$ con la transformación estándar~\cite{hmu}
+($A \to A\alpha \mid \beta \Rightarrow A \to \beta A'$, $A' \to \alpha A' \mid \varepsilon$),
+que da $NP \to NPbase\ NP'$, $NP' \to PP\ NP' \mid \varepsilon$ y
+$VP \to \textit{Verb}\ ObjOpc\ VP'$, $VP' \to PP\ VP' \mid \textit{Adv}\ VP' \mid \varepsilon$.
+
+\paragraph{Decisiones de diseño.} \textit{Intens} (\emph{muy}) es una categoría distinta de
+\textit{Adv} para que la gramática siga siendo LL(1). La concordancia no se escribe en la
+gramática: con rasgos finitos sería posible, pero habría que duplicar $NP$, $Nom$, $AdjP$ y las
+categorías por cada combinación de género y número, y los verbos por persona y número. Por eso
+la gramática deriva \emph{*La elefante grises duerme} y un analizador semántico la rechaza, como
+la regla de \emph{declarar antes de usar} en la Fase~1.
+
+\paragraph{Ambigüedad estructural.} En \emph{Él mató un elefante en sus pijamas}, \textit{Prep}
+está en FIRST($NP'$) y en FOLLOW($NP'$): la gramática no es LL(1) y ninguna transformación lo
+arregla, porque la oración tiene de verdad dos árboles (figura~\ref{fig:arboles_pijamas}). El
+parser une la frase preposicional al sustantivo más cercano y devuelve uno solo.
+
+\begin{figure}[h]
+  \centering
+  \raisebox{-0.5\height}{\includegraphics[width=0.49\linewidth]{arbol_pijamas}}%
+  \hfill
+  \raisebox{-0.5\height}{\resizebox{0.49\linewidth}{!}{%
+  \begin{forest} sintaxis
+    [S [NP [NPbase [Prn [él]]]]
+       [VP [Verb [mató]]
+           [NP [NPbase [Det [un]] [Nom [Noun [elefante]]]]]
+           [PP [Prep [en]] [NP [NPbase [Pos [sus]] [Nom [Noun [pijamas]]]]]]]]
+  \end{forest}}}
+  \caption{Los dos árboles de \emph{Él mató un elefante en sus pijamas}. Izquierda: la frase
+    preposicional unida al objeto, la imagen que genera nuestro parser
+    (\texttt{python -m spanish.pipeline "..." --png}). Derecha: la otra lectura, unida al verbo,
+    que el parser no construye.}
+  \label{fig:arboles_pijamas}
+\end{figure}
+
+\paragraph{Lo que la gramática no puede describir.} El \textbf{sujeto omitido} (\emph{Leímos un
+libro}) choca con $S \to NP\ VP$; el \textbf{orden libre} (\emph{Leen las niñas un libro})
+necesita reglas por cada orden; la \textbf{coordinación} (\emph{El perro y el gato duermen})
+cambia la concordancia; las \textbf{subordinadas} (\emph{La niña que lee un libro come})
+necesitan oraciones con huecos dentro de sintagmas nominales; y el \textbf{vocabulario cerrado}
+rechaza cualquier palabra nueva. Todas se podrían agregar con más reglas, a costa de una
+gramática mucho más grande y ambigua. Lo que limita a nuestro fragmento es la cobertura; el
+límite del poder expresivo de las CFG aparece en fenómenos como las dependencias cruzadas del
+suizo alemán~\cite{shieber}.

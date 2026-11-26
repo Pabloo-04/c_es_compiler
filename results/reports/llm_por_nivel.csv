@@ -1,0 +1,4 @@
+grupo,oraciones (llm_zero),coincide_reglas (llm_zero),coincide_espanol (llm_zero),oraciones (llm_few),coincide_reglas (llm_few),coincide_espanol (llm_few)
+1,20,1.0,1.0,20,1.0,1.0
+2,29,0.9655172413793104,0.9655172413793104,29,1.0,1.0
+3,24,0.9583333333333334,0.5,24,0.9583333333333334,0.5833333333333334

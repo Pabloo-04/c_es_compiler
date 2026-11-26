@@ -1,0 +1,49 @@
+% Responsable: P4  (versión completa en extendido/05_set_de_prueba.tex)
+\section{Conjunto de prueba y metodología}
+\label{sec:set_de_prueba}
+
+El conjunto (\texttt{data/test\_set.csv}) tiene 73 oraciones en tres niveles
+(tabla~\ref{tab:set_de_prueba}). Cada una lleva la salida esperada: si la gramática debe
+aceptarla, si es español correcto, el tipo de error, los fenómenos que prueba, la categoría de
+cada palabra, el sujeto, el verbo, el objeto y a qué se une la primera frase preposicional.
+\begin{itemize}
+  \item \textbf{Nivel 1 (simples):} sujeto-verbo y sujeto-verbo-objeto, todas aceptables.
+  \item \textbf{Nivel 2 (intermedias):} adjetivos, intensificadores, adverbios y frases
+    preposicionales, más errores de concordancia (\emph{*La perro come}).
+  \item \textbf{Nivel 3 (complejas):} varias frases preposicionales, ambigüedad estructural,
+    concordancia a distancia y 11 oraciones correctas que la gramática no genera.
+\end{itemize}
+
+\begin{table}[h]
+  \centering
+  \small
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Nivel & Oraciones & En la gramática & Válidas fuera & Error sintáctico & Error de concordancia & Con PP \\
+    \midrule
+    1 & 20 & 20 & 0 & 0 & 0 & 0 \\
+    2 & 29 & 18 & 0 & 1 & 10 & 6 \\
+    3 & 24 & 7 & 11 & 14 & 3 & 11 \\
+    Total & 73 & 45 & 11 & 15 & 13 & 17 \\
+    \bottomrule
+  \end{tabular}}
+  \caption{Composición del conjunto de prueba.}
+  \label{tab:set_de_prueba}
+\end{table}
+
+\paragraph{Dos referencias.} Cada decisión se evalúa contra \texttt{en\_gramatica} (¿sigue las
+reglas?) y contra \texttt{espanol\_valido} (¿es español correcto?). Las 11 oraciones correctas
+fuera de la gramática separan a un sistema que sigue las reglas de uno que sigue su conocimiento
+del español.
+
+\paragraph{Métricas.} Con la clase positiva \emph{acepta}:
+precisión $= VP/(VP+FP)$, cobertura $= VP/(VP+FN)$, rechazo correcto $= VN/(VN+FP)$ y
+exactitud. Además: tipo de error correcto en los rechazos, exactitud del etiquetado palabra por
+palabra, exactitud de sujeto, verbo y objeto, y exactitud de la unión de la frase preposicional
+(una falta de respuesta cuenta como error). Cada sistema participa solo donde produce datos.
+
+\paragraph{Sistemas.} Parser propio; spaCy 3.8 (\texttt{es\_core\_news\_sm}); Transformers
+(XLM-R para etiquetar y BETO para la gramaticalidad); y el LLM \texttt{gemini-3.5-flash-lite}
+con temperatura~0, en versiones \emph{zero-shot} y \emph{few-shot}. Todos se corrieron el 26 de
+noviembre de 2026; las métricas salen de \texttt{python -m evaluation.metrics}.

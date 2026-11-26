@@ -1,0 +1,40 @@
+% Responsable: P5  (versión completa en extendido/09_comparacion_enfoques.tex)
+\section{Comparación de enfoques}
+\label{sec:comparacion_enfoques}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{p{0.19\linewidth}p{0.22\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+    \toprule
+    & CFG con rasgos & spaCy y Transformers & LLM con las reglas \\
+    \midrule
+    Robustez & rechaza todo lo que no deriva & analiza casi cualquier oración & rechaza, pero analiza bien \\
+    Ambigüedad & un árbol, por regla fija & el análisis más probable & una lectura; nunca dice \texttt{ambigua} \\
+    Escalabilidad & escribir reglas y palabras & reentrenar con un corpus anotado & cambiar el prompt, sin garantías \\
+    Costo por oración & $\sim$0.01 ms, léxico de 14 KB & 1.6 ms (spaCy) a 61 ms (Transformers), hasta 1.5 GB & $\sim$2 s y un servicio externo \\
+    \bottomrule
+  \end{tabular}
+  \caption{Comparación de los tres enfoques (tiempos: mediana por oración en CPU).}
+  \label{tab:enfoques}
+\end{table}
+
+\paragraph{Robustez y ambigüedad.} La CFG es exacta dentro de su fragmento y frágil fuera de él:
+una palabra nueva basta para rechazar la oración. Los modelos estadísticos degradan de forma
+gradual. Ninguno maneja la ambigüedad: la gramática la describe, pero el parser descendente
+devuelve un solo árbol, y los modelos eligen una lectura sin avisar.
+
+\paragraph{Escalabilidad y costo computacional.} Ampliar la gramática es trabajo manual y cada
+regla puede crear conflictos (ya \emph{bajo} rompe el análisis sin retroceso). Los modelos
+estadísticos ya tienen cobertura amplia, pero ampliarlos exige datos anotados. El LLM se amplía
+cambiando el prompt, pero es el más caro: unas 200\,000 veces más lento que el parser por
+oración, depende de un servicio con límites de uso y sus respuestas solo se pueden repetir
+guardando un registro.
+
+\paragraph{Aplicabilidad práctica.} La CFG con rasgos sirve donde el lenguaje es controlado y
+hay que explicar cada rechazo: verificar entradas de un formulario, comandos en lenguaje
+restringido o ejercicios de gramática. Los modelos estadísticos sirven para texto libre, donde
+importa analizar todo aunque haya errores. El LLM sirve para prototipar rápido un analizador o
+explicar una gramática, pero no como verificador confiable. Un sistema mixto aprovecharía los
+tres: un etiquetador estadístico en lugar del léxico cerrado y la CFG con rasgos para verificar
+estructura y concordancia.

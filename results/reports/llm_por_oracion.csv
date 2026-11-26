@@ -1,0 +1,74 @@
+id,nivel,oracion,fenomeno,esperado,LLM zero-shot,LLM few-shot
+1,1,Ella come una manzana.,svo,acepta,acepta,acepta
+2,2,Los perros grandes durmieron.,"adjetivo, intransitivo, preterito",acepta,acepta,acepta
+3,2,Él mató un elefante muy gris ayer.,"intensificador, adverbio, preterito",acepta,acepta,acepta
+4,3,Él mató un elefante en sus pijamas.,"ambiguedad, pp",acepta,rechaza (sintactico),acepta
+5,2,La elefante grises duerme.,concordancia_np,rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+6,2,Los perros come.,concordancia_sv,rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+7,3,Come la manzana.,sujeto_omitido,rechaza (sintactico),rechaza (concordancia),rechaza (sintactico)
+8,2,Mi niña comió la manzana con su perro.,"posesivo, pp, preterito",acepta,acepta,acepta
+9,2,El perro duerme en sus pijamas.,"pp, intransitivo, posesivo",acepta,rechaza (concordancia),acepta
+10,2,Ella comió la manzana de su perro.,"pp, posesivo, preterito",acepta,acepta,acepta
+11,1,El perro come.,intransitivo,acepta,acepta,acepta
+12,1,Los gatos duermen.,intransitivo,acepta,acepta,acepta
+13,1,Yo leo un libro.,svo,acepta,acepta,acepta
+14,1,Tú compras las manzanas.,svo,acepta,acepta,acepta
+15,1,Nosotros vimos un pájaro.,"svo, preterito",acepta,acepta,acepta
+16,1,La niña busca la pelota.,svo,acepta,acepta,acepta
+17,1,Ellas leyeron las cartas.,"svo, preterito",acepta,acepta,acepta
+18,1,El profesor lee.,intransitivo,acepta,acepta,acepta
+19,1,Mi perro duerme.,"posesivo, intransitivo",acepta,acepta,acepta
+20,1,Los niños comieron el pan.,"svo, preterito",acepta,acepta,acepta
+21,1,Ella mató un ratón.,"svo, preterito",acepta,acepta,acepta
+22,1,Las mujeres compran los libros.,svo,acepta,acepta,acepta
+23,1,Un hombre busca una casa.,svo,acepta,acepta,acepta
+24,1,Nosotras dormimos.,intransitivo,acepta,acepta,acepta
+25,1,El gato vio un pájaro.,"svo, preterito",acepta,acepta,acepta
+26,1,Él come el pan.,svo,acepta,acepta,acepta
+27,1,Tus perras comen.,"posesivo, intransitivo",acepta,acepta,acepta
+28,1,Ellos buscaron sus libros.,"svo, posesivo, preterito",acepta,acepta,acepta
+29,1,La profesora compró una mesa.,"svo, preterito",acepta,acepta,acepta
+30,2,El perro negro come.,"adjetivo, intransitivo",acepta,acepta,acepta
+31,2,La niña pequeña lee un libro nuevo.,"adjetivo, svo",acepta,acepta,acepta
+32,2,Los pájaros blancos duermen ahora.,"adjetivo, adverbio, intransitivo",acepta,acepta,acepta
+33,2,Ella comió la manzana roja ayer.,"adjetivo, adverbio, preterito, svo",acepta,acepta,acepta
+34,2,El hombre muy alto busca su perro.,"intensificador, posesivo, svo",acepta,acepta,acepta
+35,2,Las niñas leen rápidamente.,"adverbio, intransitivo",acepta,acepta,acepta
+36,2,Yo compré unas manzanas verdes.,"adjetivo, svo, preterito",acepta,acepta,acepta
+37,2,El gato duerme sobre la mesa.,"pp, intransitivo",acepta,acepta,acepta
+38,2,Nosotros leemos en el parque.,"pp, intransitivo",acepta,acepta,acepta
+39,2,La profesora lee un libro bastante fácil.,"intensificador, svo",acepta,acepta,acepta
+40,2,Mi gata hambrienta come el pan.,"posesivo, adjetivo, svo",acepta,acepta,acepta
+41,2,Los niños felices compraron una pelota azul.,"adjetivo, svo, preterito",acepta,acepta,acepta
+42,2,El gato duerme bajo la mesa.,"pp, ambiguedad, intransitivo",acepta,acepta,acepta
+43,2,La perro come.,concordancia_np,rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+44,2,El gato negros duerme.,"concordancia_np, adjetivo",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+45,2,Ella lee mi libros.,"concordancia_np, posesivo",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+46,2,La profesora alto lee.,"concordancia_np, adjetivo",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+47,2,La niña comen el pan.,concordancia_sv,rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+48,2,Yo come una manzana.,concordancia_sv,rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+49,2,Nosotros compró los libros.,"concordancia_sv, preterito",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+50,2,Ellas duerme.,"concordancia_sv, intransitivo",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+51,2,El gato come muy.,intensificador,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+52,3,Ellos ven los árboles altos desde la casa.,"pp, adjetivo",acepta,acepta,acepta
+53,3,Mi perro vio un gato en el jardín.,"ambiguedad, pp, posesivo, preterito",acepta,acepta,acepta
+54,3,La profesora leyó las cartas de los niños en la escuela.,"pp, preterito",acepta,acepta,acepta
+55,3,Las mujeres jóvenes compraron unas manzanas muy rojas para sus niños.,"pp, adjetivo, intensificador, posesivo, preterito",acepta,acepta,acepta
+56,3,El niño pequeño buscó su pelota azul en el parque ayer.,"pp, adjetivo, posesivo, adverbio, preterito",acepta,acepta,acepta
+57,3,El perro de los niños come.,"pp, concordancia_sv",acepta,acepta,acepta
+58,3,El perro de los niños comen.,"concordancia_sv, pp",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+59,3,Los gatos de la mujer duerme.,"concordancia_sv, pp",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+60,3,Ella vio el gato de las niña.,"concordancia_np, pp, preterito",rechaza (concordancia),rechaza (concordancia),rechaza (concordancia)
+61,3,Leímos un libro.,"sujeto_omitido, preterito",rechaza (sintactico),rechaza (sintactico),acepta
+62,3,Leen las niñas un libro.,orden_libre,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+63,3,Compraron ellos los libros ayer.,"orden_libre, preterito, adverbio",rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+64,3,El perro y el gato duermen.,coordinacion,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+65,3,Ella come la manzana y el pan.,coordinacion,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+66,3,Los niños comen rápidamente y duermen tranquilamente.,"coordinacion, adverbio",rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+67,3,La niña que lee un libro come.,subordinada,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+68,3,El libro que leí ayer es nuevo.,"subordinada, fuera_lexico",rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+69,3,Ella no come la manzana.,fuera_lexico,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+70,3,El perro corre en el parque.,"fuera_lexico, pp",rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+71,3,Perro el come.,orden_libre,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+72,3,La niña lee un.,svo,rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)
+73,3,El elefante grande muy duerme.,"intensificador, adjetivo",rechaza (sintactico),rechaza (sintactico),rechaza (sintactico)

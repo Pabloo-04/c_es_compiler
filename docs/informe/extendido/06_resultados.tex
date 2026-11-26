@@ -1,0 +1,176 @@
+% Responsable: P4
+% Tablas y figuras: python -m evaluation.metrics  (results/tablas/*.tex, results/figures/*.png).
+% \tablagenerada y \figuragenerada están definidas en informe.tex (copias en tablas/ y figuras/).
+\section{Resultados}
+\label{sec:resultados}
+
+
+Se comparan cinco sistemas sobre las mismas 73 oraciones: nuestro parser, spaCy, Transformers
+(XLM-R para las etiquetas y BETO para decidir la gramaticalidad, sección~\ref{sec:comparacion_nlp})
+y el LLM en sus dos versiones, \emph{zero-shot} y \emph{few-shot}
+(sección~\ref{sec:analisis_llm}). Cada sistema aparece solo en las tablas para las que produce
+datos: spaCy no decide si una oración es válida, y Transformers no da funciones sintácticas ni
+unión de la frase preposicional. Esta sección presenta las cifras; las secciones
+\ref{sec:comparacion_nlp} a~\ref{sec:comparacion_enfoques} las interpretan.
+
+\subsection{Aceptación}
+
+\begin{table}[h]
+  \centering
+  \small
+  \tablagenerada{aceptacion}\par\medskip
+  \tablagenerada{aceptacion_espanol}
+  \caption{Aceptación contra \texttt{en\_gramatica} (arriba) y contra \texttt{espanol\_valido}
+    (abajo). ``---'': la métrica no aplica al sistema.}
+  \label{tab:aceptacion}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada{aceptacion}
+  \caption{Métricas de aceptación contra las reglas de la gramática.}
+  \label{fig:aceptacion}
+\end{figure}
+
+El parser propio acepta exactamente las 45 oraciones de la gramática y rechaza las 28 que no
+lo están. Además, todas las rechaza por la razón esperada: 15 por error sintáctico y 13 por
+concordancia (tabla~\ref{tab:tipo_error}). Este resultado no mide qué tan bueno es el enfoque,
+porque el conjunto se etiquetó con la misma gramática que implementa el parser. Lo que muestra
+es que la implementación es fiel a la especificación, incluso en los casos difíciles: la
+concordancia a distancia (\emph{El perro de los niños come} se acepta y \emph{*...comen} se
+rechaza) y la palabra ambigua \emph{bajo}.
+
+La comparación interesante es contra \texttt{espanol\_valido}. Ahí el parser tiene precisión
+1.00, pero su cobertura baja a 0.80. Nunca acepta español incorrecto, pero rechaza 11 de las 56
+oraciones correctas: todo lo que la CFG no genera (sujeto omitido, orden libre, coordinación,
+subordinadas y palabras fuera del léxico). Ese 20\,\% es la medida concreta de cuánto español
+correcto queda fuera de la gramática.
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada[0.7\linewidth]{reglas_vs_espanol}
+  \caption{Exactitud de la aceptación contra las dos referencias.}
+  \label{fig:reglas_vs_espanol}
+\end{figure}
+
+Los otros dos sistemas que deciden se comportan de forma opuesta. Transformers tiene
+exactitud 0.85 contra el español y solo 0.73 contra las reglas: acepta 10 de las 11 oraciones
+correctas que la gramática no genera, es decir, sigue su conocimiento del español. El LLM hace
+lo contrario: 0.97 (\emph{zero-shot}) y 0.99 (\emph{few-shot}) contra las reglas, y 0.82 y 0.86
+contra el español. Cuando recibe la gramática en el prompt, rechaza casi todo lo que la gramática
+no genera, aunque sea español correcto. Es el sistema más cercano al parser en la decisión, y el
+único además del parser que dice por qué rechaza: acierta el tipo de error en el 96\,\% y el
+100\,\% de los rechazos.
+
+\begin{table}[h]
+  \centering
+  \small
+  \resizebox{\linewidth}{!}{\tablagenerada{tipo_error}}
+  \caption{Tipo de error esperado frente a la respuesta del sistema, en las 28 oraciones fuera
+    de la gramática.}
+  \label{tab:tipo_error}
+\end{table}
+
+\subsection{Resultados por nivel}
+
+\begin{table}[h]
+  \centering
+  \small
+  \tablagenerada{exactitud_aceptacion_por_nivel}\par\medskip
+  \tablagenerada{etiquetado_por_nivel}
+  \caption{Exactitud de la aceptación (arriba) y del etiquetado (abajo) por nivel.}
+  \label{tab:por_nivel}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada{por_nivel}
+  \caption{Exactitud por nivel de complejidad.}
+  \label{fig:por_nivel}
+\end{figure}
+
+Los niveles 1 y 2 son fáciles para todos los sistemas que deciden, salvo Transformers, que ya
+en el nivel 1 rechaza una de cada cuatro oraciones correctas (exactitud 0.75): BETO castiga las
+oraciones cortas y con palabras poco frecuentes (sección~\ref{sec:comparacion_nlp}). En el
+nivel 3 las diferencias se hacen grandes. El parser sigue en 1.00 contra las reglas; el LLM baja
+a 0.96 en las dos versiones, por una sola oración en cada una (\emph{zero-shot} rechaza \emph{Él
+mató un elefante en sus pijamas}; \emph{few-shot} acepta \emph{Leímos un libro}); y
+Transformers cae a 0.54, porque es el nivel con las 11 oraciones correctas fuera de la
+gramática, que acepta casi todas. En el etiquetado el patrón se repite con menos fuerza: spaCy es
+el único que pierde exactitud desde el nivel 1 (0.92), por las oraciones cortas, y los demás
+solo bajan en el nivel 3.
+
+\subsection{Etiquetado y funciones sintácticas}
+
+\begin{table}[h]
+  \centering
+  \small
+  \tablagenerada{etiquetado}\quad\tablagenerada{funciones}
+  \caption{Exactitud del etiquetado (y oraciones con otro número de palabras), y de las
+    funciones sintácticas.}
+  \label{tab:etiquetado}
+\end{table}
+
+\begin{table}[h]
+  \centering
+  \small
+  \tablagenerada{etiquetado_categoria}
+  \caption{Cobertura (\emph{recall}) del etiquetado por categoría.}
+  \label{tab:etiquetado_categoria}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada[0.8\linewidth]{etiquetado_categoria}
+  \caption{Cobertura del etiquetado por categoría.}
+  \label{fig:etiquetado_categoria}
+\end{figure}
+
+El parser etiqueta sin errores, y da bien el sujeto, el verbo y el objeto, en todas las
+oraciones que puede derivar (58 de 73: las aceptadas y las que fallan solo en la
+concordancia). En las otras 15 no produce etiquetas. Los demás sistemas etiquetan las 73. El LLM
+es el más exacto (0.99 en las dos versiones), seguido de Transformers (0.98) y de spaCy (0.94),
+cuyo punto débil son los verbos: su cobertura en \textit{Verb} es 0.82, porque en oraciones
+cortas como \emph{El perro come} etiqueta el verbo como sustantivo. En la categoría \texttt{X}
+(palabras fuera del léxico) spaCy y Transformers tienen cobertura 0.50, pero no por error: dan la
+categoría real de palabras como \emph{que} o \emph{no}, que el conjunto marca como \texttt{X}
+por convención. El LLM, que tiene el léxico en el prompt, sí las marca \texttt{X}.
+
+En las funciones sintácticas el LLM \emph{few-shot} queda cerca del parser (0.97, 0.96 y 1.00
+en sujeto, verbo y objeto) y por encima de spaCy (0.88, 0.86 y 0.92). La exactitud del parser
+es 1.00 pero, otra vez, solo sobre las oraciones que puede derivar; la
+sección~\ref{sec:comparacion_nlp} compara los sistemas en el mismo subconjunto.
+
+\subsection{Unión de la frase preposicional}
+
+\begin{table}[h]
+  \centering
+  \small
+  \tablagenerada{pp_adjunta}\par\medskip
+  \tablagenerada{pp_confusion}
+  \caption{Unión de la primera frase preposicional en las 17 oraciones que la tienen.}
+  \label{tab:pp}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada{funciones_pp}
+  \caption{Funciones sintácticas y unión de la frase preposicional.}
+  \label{fig:funciones_pp}
+\end{figure}
+
+Aquí aparece el costo del conflicto LL(1) de la sección~\ref{sec:gramatica}. El parser une la
+frase preposicional al sustantivo más cercano siempre que hay un objeto. Por eso acierta en
+las 6 oraciones donde la unión correcta es al sustantivo, y falla en las 4 donde un hablante la
+une al verbo (\emph{Ellos ven los árboles altos desde la casa}). Las 2 oraciones ambiguas las
+resuelve sin avisar, como si no lo fueran, así que detecta 0 de 2 ambigüedades. Su exactitud es
+0.59 (10 de 17). Una de las fallas es \emph{El perro corre en el parque}, que no se puede
+derivar porque \emph{corre} no está en el léxico.
+
+Los sistemas estadísticos aciertan más porque deciden por el sentido y no por la posición. spaCy
+acierta 13 de 17: falla en dos oraciones donde une la frase al sustantivo cuando un hablante la
+une al verbo (\emph{Ellos ven los árboles altos desde la casa}). El LLM es el mejor, con 15 de 17
+en \emph{zero-shot} y 14 de 17 en \emph{few-shot}: une \emph{con su perro} al verbo y \emph{de
+los niños} al sustantivo, como un hablante. Pero ningún sistema detecta las 2 oraciones
+ambiguas. spaCy y el LLM eligen siempre el verbo, y el LLM nunca responde \texttt{ambigua},
+aunque el prompt le ofrece esa opción.
