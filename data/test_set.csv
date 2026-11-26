@@ -9,3 +9,66 @@ id,nivel,oracion,en_gramatica,espanol_valido,tipo_error,fenomeno,etiquetas,sujet
 8,2,Mi niña comió la manzana con su perro.,si,si,ninguno,posesivo;pp;preterito,mi/Pos niña/Noun comió/Verb la/Det manzana/Noun con/Prep su/Pos perro/Noun,niña,comió,manzana,verbo
 9,2,El perro duerme en sus pijamas.,si,si,ninguno,pp;intransitivo;posesivo,el/Det perro/Noun duerme/Verb en/Prep sus/Pos pijamas/Noun,perro,duerme,,verbo
 10,2,Ella comió la manzana de su perro.,si,si,ninguno,pp;posesivo;preterito,ella/Prn comió/Verb la/Det manzana/Noun de/Prep su/Pos perro/Noun,ella,comió,manzana,sustantivo
+11,1,El perro come.,si,si,ninguno,intransitivo,el/Det perro/Noun come/Verb,perro,come,,
+12,1,Los gatos duermen.,si,si,ninguno,intransitivo,los/Det gatos/Noun duermen/Verb,gatos,duermen,,
+13,1,Yo leo un libro.,si,si,ninguno,svo,yo/Prn leo/Verb un/Det libro/Noun,yo,leo,libro,
+14,1,Tú compras las manzanas.,si,si,ninguno,svo,tú/Prn compras/Verb las/Det manzanas/Noun,tú,compras,manzanas,
+15,1,Nosotros vimos un pájaro.,si,si,ninguno,svo;preterito,nosotros/Prn vimos/Verb un/Det pájaro/Noun,nosotros,vimos,pájaro,
+16,1,La niña busca la pelota.,si,si,ninguno,svo,la/Det niña/Noun busca/Verb la/Det pelota/Noun,niña,busca,pelota,
+17,1,Ellas leyeron las cartas.,si,si,ninguno,svo;preterito,ellas/Prn leyeron/Verb las/Det cartas/Noun,ellas,leyeron,cartas,
+18,1,El profesor lee.,si,si,ninguno,intransitivo,el/Det profesor/Noun lee/Verb,profesor,lee,,
+19,1,Mi perro duerme.,si,si,ninguno,posesivo;intransitivo,mi/Pos perro/Noun duerme/Verb,perro,duerme,,
+20,1,Los niños comieron el pan.,si,si,ninguno,svo;preterito,los/Det niños/Noun comieron/Verb el/Det pan/Noun,niños,comieron,pan,
+21,1,Ella mató un ratón.,si,si,ninguno,svo;preterito,ella/Prn mató/Verb un/Det ratón/Noun,ella,mató,ratón,
+22,1,Las mujeres compran los libros.,si,si,ninguno,svo,las/Det mujeres/Noun compran/Verb los/Det libros/Noun,mujeres,compran,libros,
+23,1,Un hombre busca una casa.,si,si,ninguno,svo,un/Det hombre/Noun busca/Verb una/Det casa/Noun,hombre,busca,casa,
+24,1,Nosotras dormimos.,si,si,ninguno,intransitivo,nosotras/Prn dormimos/Verb,nosotras,dormimos,,
+25,1,El gato vio un pájaro.,si,si,ninguno,svo;preterito,el/Det gato/Noun vio/Verb un/Det pájaro/Noun,gato,vio,pájaro,
+26,1,Él come el pan.,si,si,ninguno,svo,él/Prn come/Verb el/Det pan/Noun,él,come,pan,
+27,1,Tus perras comen.,si,si,ninguno,posesivo;intransitivo,tus/Pos perras/Noun comen/Verb,perras,comen,,
+28,1,Ellos buscaron sus libros.,si,si,ninguno,svo;posesivo;preterito,ellos/Prn buscaron/Verb sus/Pos libros/Noun,ellos,buscaron,libros,
+29,1,La profesora compró una mesa.,si,si,ninguno,svo;preterito,la/Det profesora/Noun compró/Verb una/Det mesa/Noun,profesora,compró,mesa,
+30,2,El perro negro come.,si,si,ninguno,adjetivo;intransitivo,el/Det perro/Noun negro/Adj come/Verb,perro,come,,
+31,2,La niña pequeña lee un libro nuevo.,si,si,ninguno,adjetivo;svo,la/Det niña/Noun pequeña/Adj lee/Verb un/Det libro/Noun nuevo/Adj,niña,lee,libro,
+32,2,Los pájaros blancos duermen ahora.,si,si,ninguno,adjetivo;adverbio;intransitivo,los/Det pájaros/Noun blancos/Adj duermen/Verb ahora/Adv,pájaros,duermen,,
+33,2,Ella comió la manzana roja ayer.,si,si,ninguno,adjetivo;adverbio;preterito;svo,ella/Prn comió/Verb la/Det manzana/Noun roja/Adj ayer/Adv,ella,comió,manzana,
+34,2,El hombre muy alto busca su perro.,si,si,ninguno,intensificador;posesivo;svo,el/Det hombre/Noun muy/Intens alto/Adj busca/Verb su/Pos perro/Noun,hombre,busca,perro,
+35,2,Las niñas leen rápidamente.,si,si,ninguno,adverbio;intransitivo,las/Det niñas/Noun leen/Verb rápidamente/Adv,niñas,leen,,
+36,2,Yo compré unas manzanas verdes.,si,si,ninguno,adjetivo;svo;preterito,yo/Prn compré/Verb unas/Det manzanas/Noun verdes/Adj,yo,compré,manzanas,
+37,2,El gato duerme sobre la mesa.,si,si,ninguno,pp;intransitivo,el/Det gato/Noun duerme/Verb sobre/Prep la/Det mesa/Noun,gato,duerme,,verbo
+38,2,Nosotros leemos en el parque.,si,si,ninguno,pp;intransitivo,nosotros/Prn leemos/Verb en/Prep el/Det parque/Noun,nosotros,leemos,,verbo
+39,2,La profesora lee un libro bastante fácil.,si,si,ninguno,intensificador;svo,la/Det profesora/Noun lee/Verb un/Det libro/Noun bastante/Intens fácil/Adj,profesora,lee,libro,
+40,2,Mi gata hambrienta come el pan.,si,si,ninguno,posesivo;adjetivo;svo,mi/Pos gata/Noun hambrienta/Adj come/Verb el/Det pan/Noun,gata,come,pan,
+41,2,Los niños felices compraron una pelota azul.,si,si,ninguno,adjetivo;svo;preterito,los/Det niños/Noun felices/Adj compraron/Verb una/Det pelota/Noun azul/Adj,niños,compraron,pelota,
+42,2,El gato duerme bajo la mesa.,si,si,ninguno,pp;ambiguedad;intransitivo,el/Det gato/Noun duerme/Verb bajo/Prep la/Det mesa/Noun,gato,duerme,,verbo
+43,2,La perro come.,no,no,concordancia,concordancia_np,la/Det perro/Noun come/Verb,perro,come,,
+44,2,El gato negros duerme.,no,no,concordancia,concordancia_np;adjetivo,el/Det gato/Noun negros/Adj duerme/Verb,gato,duerme,,
+45,2,Ella lee mi libros.,no,no,concordancia,concordancia_np;posesivo,ella/Prn lee/Verb mi/Pos libros/Noun,ella,lee,libros,
+46,2,La profesora alto lee.,no,no,concordancia,concordancia_np;adjetivo,la/Det profesora/Noun alto/Adj lee/Verb,profesora,lee,,
+47,2,La niña comen el pan.,no,no,concordancia,concordancia_sv,la/Det niña/Noun comen/Verb el/Det pan/Noun,niña,comen,pan,
+48,2,Yo come una manzana.,no,no,concordancia,concordancia_sv,yo/Prn come/Verb una/Det manzana/Noun,yo,come,manzana,
+49,2,Nosotros compró los libros.,no,no,concordancia,concordancia_sv;preterito,nosotros/Prn compró/Verb los/Det libros/Noun,nosotros,compró,libros,
+50,2,Ellas duerme.,no,no,concordancia,concordancia_sv;intransitivo,ellas/Prn duerme/Verb,ellas,duerme,,
+51,2,El gato come muy.,no,no,sintactico,intensificador,el/Det gato/Noun come/Verb muy/Intens,gato,come,,
+52,3,Ellos ven los árboles altos desde la casa.,si,si,ninguno,pp;adjetivo,ellos/Prn ven/Verb los/Det árboles/Noun altos/Adj desde/Prep la/Det casa/Noun,ellos,ven,árboles,verbo
+53,3,Mi perro vio un gato en el jardín.,si,si,ninguno,ambiguedad;pp;posesivo;preterito,mi/Pos perro/Noun vio/Verb un/Det gato/Noun en/Prep el/Det jardín/Noun,perro,vio,gato,ambigua
+54,3,La profesora leyó las cartas de los niños en la escuela.,si,si,ninguno,pp;preterito,la/Det profesora/Noun leyó/Verb las/Det cartas/Noun de/Prep los/Det niños/Noun en/Prep la/Det escuela/Noun,profesora,leyó,cartas,sustantivo
+55,3,Las mujeres jóvenes compraron unas manzanas muy rojas para sus niños.,si,si,ninguno,pp;adjetivo;intensificador;posesivo;preterito,las/Det mujeres/Noun jóvenes/Adj compraron/Verb unas/Det manzanas/Noun muy/Intens rojas/Adj para/Prep sus/Pos niños/Noun,mujeres,compraron,manzanas,verbo
+56,3,El niño pequeño buscó su pelota azul en el parque ayer.,si,si,ninguno,pp;adjetivo;posesivo;adverbio;preterito,el/Det niño/Noun pequeño/Adj buscó/Verb su/Pos pelota/Noun azul/Adj en/Prep el/Det parque/Noun ayer/Adv,niño,buscó,pelota,verbo
+57,3,El perro de los niños come.,si,si,ninguno,pp;concordancia_sv,el/Det perro/Noun de/Prep los/Det niños/Noun come/Verb,perro,come,,sustantivo
+58,3,El perro de los niños comen.,no,no,concordancia,concordancia_sv;pp,el/Det perro/Noun de/Prep los/Det niños/Noun comen/Verb,perro,comen,,sustantivo
+59,3,Los gatos de la mujer duerme.,no,no,concordancia,concordancia_sv;pp,los/Det gatos/Noun de/Prep la/Det mujer/Noun duerme/Verb,gatos,duerme,,sustantivo
+60,3,Ella vio el gato de las niña.,no,no,concordancia,concordancia_np;pp;preterito,ella/Prn vio/Verb el/Det gato/Noun de/Prep las/Det niña/Noun,ella,vio,gato,sustantivo
+61,3,Leímos un libro.,no,si,sintactico,sujeto_omitido;preterito,leímos/Verb un/Det libro/Noun,,leímos,libro,
+62,3,Leen las niñas un libro.,no,si,sintactico,orden_libre,leen/Verb las/Det niñas/Noun un/Det libro/Noun,niñas,leen,libro,
+63,3,Compraron ellos los libros ayer.,no,si,sintactico,orden_libre;preterito;adverbio,compraron/Verb ellos/Prn los/Det libros/Noun ayer/Adv,ellos,compraron,libros,
+64,3,El perro y el gato duermen.,no,si,sintactico,coordinacion,el/Det perro/Noun y/X el/Det gato/Noun duermen/Verb,perro,duermen,,
+65,3,Ella come la manzana y el pan.,no,si,sintactico,coordinacion,ella/Prn come/Verb la/Det manzana/Noun y/X el/Det pan/Noun,ella,come,manzana,
+66,3,Los niños comen rápidamente y duermen tranquilamente.,no,si,sintactico,coordinacion;adverbio,los/Det niños/Noun comen/Verb rápidamente/Adv y/X duermen/Verb tranquilamente/Adv,niños,comen,,
+67,3,La niña que lee un libro come.,no,si,sintactico,subordinada,la/Det niña/Noun que/X lee/Verb un/Det libro/Noun come/Verb,niña,come,,
+68,3,El libro que leí ayer es nuevo.,no,si,sintactico,subordinada;fuera_lexico,el/Det libro/Noun que/X leí/Verb ayer/Adv es/Verb nuevo/Adj,libro,es,,
+69,3,Ella no come la manzana.,no,si,sintactico,fuera_lexico,ella/Prn no/X come/Verb la/Det manzana/Noun,ella,come,manzana,
+70,3,El perro corre en el parque.,no,si,sintactico,fuera_lexico;pp,el/Det perro/Noun corre/Verb en/Prep el/Det parque/Noun,perro,corre,,verbo
+71,3,Perro el come.,no,no,sintactico,orden_libre,perro/Noun el/Det come/Verb,perro,come,,
+72,3,La niña lee un.,no,no,sintactico,svo,la/Det niña/Noun lee/Verb un/Det,niña,lee,,
+73,3,El elefante grande muy duerme.,no,no,sintactico,intensificador;adjetivo,el/Det elefante/Noun grande/Adj muy/Intens duerme/Verb,elefante,duerme,,

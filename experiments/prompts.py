@@ -16,10 +16,16 @@ The answer must be ONLY the JSON of docs/gramatica_es.md, section 2.6:
 If the answer is not valid JSON, the result line gets "acepta": null and
 "error_ejecucion": "respuesta_no_json" (section 2.6).
 
-DRAFT: P5 refines the wording and the examples.
+Decisions (explained in the report, section 08):
+  - The prompt carries the lexicon as well as the phrase rules, in both
+    versions: rule 1 ("every word is in the lexicon") cannot be judged without it.
+  - An answer that is exactly one ```json ... ``` block counts as valid JSON:
+    the fence is presentation, not content. is_fenced() lets the analysis
+    count those answers apart.
 """
 
 import json
+import re
 
 from spanish.grammar import TREE_SHAPES, as_bnf
 from spanish.lexicon import Lexicon
@@ -29,9 +35,12 @@ REQUIRED_KEYS = ("acepta", "tipo_error", "etiquetas", "sujeto", "verbo", "objeto
 OPTIONAL_KEYS = ("pp_adjunta",)          # missing -> None, the rest of the answer still counts
 ANSWER_KEYS = REQUIRED_KEYS + OPTIONAL_KEYS
 
-# Few-shot examples. They must NOT be sentences of the test set
-# (tests/test_formats_and_prompts.py checks it). TODO(P5): review and choose
-# a fixed, balanced set (accepted, agreement error, syntax error).
+# Few-shot examples, fixed for the whole experiment. They are NOT sentences of
+# the test set (tests/test_formats_and_prompts.py checks it) and their answers
+# are the ones our parser gives (tests/test_llm_experiment.py checks it).
+# Balance: 3 accepted (intransitive, adjectives + object, PP attached to the
+# verb), 1 agreement error and 1 syntax error (verb-subject order). For rejected
+# sentences the tags and functions are filled in as in the test set.
 EXAMPLES: list[tuple[str, dict]] = [
     ("Ella duerme.", {
         "acepta": True, "tipo_error": None,
@@ -114,8 +123,7 @@ def shapes_text() -> str:
 
 
 def instructions() -> str:
-    # TODO(P5): decide whether to send the lexicon (rules for words) or only the
-    #           phrase rules; whichever is chosen, keep it fixed for both versions.
+    """Rules, lexicon, tree shapes and answer format: the same in both versions."""
     return INSTRUCTIONS.format(grammar=as_bnf(), lexicon=lexicon_text(), shapes=shapes_text())
 
 
@@ -132,15 +140,27 @@ def few_shot(sentence: str, examples: list[tuple[str, dict]] = EXAMPLES) -> str:
     return instructions() + "\nEjemplos resueltos:\n\n" + shots + f"\n\nOración: {sentence}\n"
 
 
+_FENCE = re.compile(r"^```(?:json)?\s*\n?(.*?)\n?```$", flags=re.DOTALL | re.IGNORECASE)
+
+
+def is_fenced(text: str) -> bool:
+    """True if the whole answer is wrapped in ```json ... ``` (or plain ```)."""
+    return bool(_FENCE.match(text.strip()))
+
+
 def parse_answer(text: str) -> dict | None:
     """The JSON answer as a dict, or None if it is not valid JSON with the right keys.
 
-    Strict, as the agreed format says ("solo con este JSON, sin texto adicional").
-    TODO(P5): decide whether an answer wrapped in ```json ... ``` counts as valid;
-              if so, strip the fences here and say it in the report.
+    The answer must be only the JSON, as the agreed format says. The one
+    tolerance: a single ```json ... ``` block around it (see is_fenced).
+    Text before or after the JSON makes it invalid.
     """
+    text = text.strip()
+    fenced = _FENCE.match(text)
+    if fenced:
+        text = fenced.group(1).strip()
     try:
-        data = json.loads(text.strip())
+        data = json.loads(text)
     except json.JSONDecodeError:
         return None
     if not isinstance(data, dict) or any(key not in data for key in REQUIRED_KEYS):
