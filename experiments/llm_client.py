@@ -31,8 +31,11 @@ The last three keys are extra (for the cost analysis): tiempo_ms is the time of
 the real call, so a reused answer keeps it; the tokens appear only when the
 provider reports them.
 
-Before calling the API, ask_llm() looks for the same id and sistema in the log
-and, if found, reuses that answer (no repeated cost, reproducible runs).
+Before calling the API, ask_llm() looks for the same id, sistema AND modelo in
+the log and, if found, reuses that answer (no repeated cost, reproducible
+runs). An answer from another model is never reused: it stays in the log as a
+record, and the new call is appended after it, so the last entry is the one
+that counts.
 """
 
 import json
@@ -143,7 +146,7 @@ def ask_llm(
     """
     if provider not in PROVIDERS:
         raise ValueError(f"proveedor desconocido {provider!r}; usa uno de {sorted(PROVIDERS)}")
-    cached = find_in_log(id, system, log_path)
+    cached = find_in_log(id, system, log_path, model=model)
     if cached is not None:
         if cached["prompt"] != prompt:
             print(f"Aviso: id {id} ({system}) está en el log con otro prompt; se reutiliza la respuesta "
@@ -179,15 +182,16 @@ def read_log(log_path: Path = LLM_LOG_PATH) -> list[dict]:
     return [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
-def find_in_log(id: int, system: str, log_path: Path = LLM_LOG_PATH) -> dict | None:
-    """Last log entry for this id and system, or None."""
+def find_in_log(id: int, system: str, log_path: Path = LLM_LOG_PATH, model: str | None = None) -> dict | None:
+    """Last log entry for this id and system (and model, if given), or None."""
     if not log_path.exists():
         return None
     found = None
     for line in log_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             entry = json.loads(line)
-            if entry.get("id") == id and entry.get("sistema") == system:
+            if entry.get("id") == id and entry.get("sistema") == system \
+                    and (model is None or entry.get("modelo") == model):
                 found = entry
     return found
 

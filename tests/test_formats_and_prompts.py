@@ -140,3 +140,14 @@ def test_ask_llm_logs_and_reuses_the_answer(tmp_path, monkeypatch):
     entry = find_in_log(1, "llm_zero", log)
     agreed = {"id", "sistema", "modelo", "temperature", "prompt", "respuesta_cruda", "fecha"}
     assert agreed <= set(entry) <= agreed | {"tiempo_ms", "tokens_entrada", "tokens_salida"}
+
+
+def test_ask_llm_does_not_reuse_an_answer_from_another_model(tmp_path, monkeypatch):
+    import experiments.llm_client as client
+
+    monkeypatch.setitem(client.PROVIDERS, "fake", lambda prompt, model, t: f"respuesta de {model}")
+    log = tmp_path / "llm.jsonl"
+    assert ask_llm("p", id=1, system="llm_zero", provider="fake", model="a", log_path=log) == "respuesta de a"
+    assert ask_llm("p", id=1, system="llm_zero", provider="fake", model="b", log_path=log) == "respuesta de b"
+    assert find_in_log(1, "llm_zero", log)["modelo"] == "b"            # the last entry counts
+    assert find_in_log(1, "llm_zero", log, model="a")["respuesta_cruda"] == "respuesta de a"
