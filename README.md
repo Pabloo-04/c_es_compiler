@@ -142,6 +142,7 @@ c_compiler/
 │   └── metrics.py              # precisión, cobertura, rechazo correcto, errores
 ├── experiments/
 │   ├── tagsets.py              # etiquetas de spaCy/Transformers → nuestras categorías
+│   ├── reports.py              # matrices de confusión y reportes de clasificación
 │   ├── llm_client.py           # cliente intercambiable del LLM y registro de llamadas
 │   └── prompts.py              # prompts zero-shot y few-shot
 ├── notebooks/
@@ -150,7 +151,7 @@ c_compiler/
 ├── data/
 │   ├── lexicon.json            # léxico con rasgos
 │   └── test_set.csv            # conjunto de prueba
-├── results/                    # salidas de cada sistema, logs y figuras
+├── results/                    # salidas de cada sistema, logs, figuras y reportes (reports/)
 ├── tests/
 ├── docs/
 │   ├── gramatica_es.md         # gramática y formato de salida (acordados por el equipo)
