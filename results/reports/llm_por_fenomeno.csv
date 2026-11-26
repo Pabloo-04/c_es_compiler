@@ -1,0 +1,17 @@
+grupo,oraciones (llm_zero),coincide_reglas (llm_zero),coincide_espanol (llm_zero),oraciones (llm_few),coincide_reglas (llm_few),coincide_espanol (llm_few)
+adjetivo,14,1.0,1.0,14,1.0,1.0
+adverbio,7,1.0,0.7142857142857143,7,1.0,0.7142857142857143
+ambiguedad,3,0.6666666666666666,0.6666666666666666,3,1.0,1.0
+concordancia_np,6,1.0,1.0,6,1.0,1.0
+concordancia_sv,8,1.0,1.0,8,1.0,1.0
+coordinacion,3,1.0,0.0,3,1.0,0.0
+fuera_lexico,3,1.0,0.0,3,1.0,0.0
+intensificador,6,1.0,1.0,6,1.0,1.0
+intransitivo,15,0.9333333333333333,0.9333333333333333,15,1.0,1.0
+orden_libre,3,1.0,0.3333333333333333,3,1.0,0.3333333333333333
+posesivo,12,0.9166666666666666,0.9166666666666666,12,1.0,1.0
+pp,17,0.8823529411764706,0.8235294117647058,17,1.0,0.9411764705882353
+preterito,22,1.0,0.9090909090909091,22,0.9545454545454546,0.9545454545454546
+subordinada,2,1.0,0.0,2,1.0,0.0
+sujeto_omitido,2,1.0,0.0,2,0.5,0.5
+svo,22,1.0,1.0,22,1.0,1.0

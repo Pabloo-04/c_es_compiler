@@ -1,0 +1,8 @@
+,Parser (CFG),spaCy,Transformers,LLM zero-shot,LLM few-shot
+etiquetado: exactitud,1.0,0.9423,0.9843,0.9921,0.9921
+etiquetado: oraciones con otro número de palabras,0.0,0.0,0.0,0.0,0.0
+sujeto,1.0,0.8767,,0.9315,0.9726
+verbo,1.0,0.863,,0.9315,0.9589
+objeto,1.0,0.9178,,0.9863,1.0
+pp_adjunta: exactitud,0.5882,0.7647,,0.8824,0.8235
+pp_adjunta: ambiguas detectadas,0.0,0.0,,0.0,0.0

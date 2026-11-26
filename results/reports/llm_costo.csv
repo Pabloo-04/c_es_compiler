@@ -1,0 +1,3 @@
+sistema,modelo,llamadas,tiempo_ms_promedio,tokens_entrada_promedio,tokens_salida_promedio,tokens_totales
+llm_few,gemini-3.5-flash-lite,73,2545.805479452055,1746.0684931506848,118.08219178082192,136083
+llm_zero,gemini-3.5-flash-lite,73,2975.7602739726026,1153.0684931506848,157.68493150684932,95685
