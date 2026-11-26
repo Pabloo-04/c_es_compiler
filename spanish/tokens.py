@@ -1,13 +1,14 @@
 """Shared contract: words and their grammatical readings.
 
 Used by the lexer (P3), the parser (P2), the agreement checker (P3) and the
-evaluation (P4). Agree on it on DAY 1; if it has to change, tell the whole team.
+evaluation (P4). Categories and feature values are the ones agreed in
+docs/gramatica_es.md (sections 1.3 and 2.2); do not change them without
+telling the whole team.
 
-Code is in English; the linguistic labels that appear in the output are the
-Spanish ones of the grammar (SUST, masc, sg...), as in docs/gramatica_es.md.
-
-A word can be ambiguous ("bajo" is ADJ, PREP and V), so a Token carries ALL
-its possible readings and the parser picks one.
+A word can be ambiguous, so a Token carries ALL its possible readings and the
+parser picks one. A word that is not in the lexicon gets one reading of
+category X ("any other word, outside the grammar"), so the parser rejects the
+sentence as a syntax error, as the agreed format expects.
 """
 
 from dataclasses import dataclass, field
@@ -15,34 +16,38 @@ from enum import Enum
 
 
 class Category(Enum):
-    """Lexical (preterminal) categories. The value is the label used in trees."""
+    """Closed set of categories (docs/gramatica_es.md, 2.2). Value = label in trees and outputs."""
 
-    DET = "DET"         # determinante: el, la, un, unos
-    NOUN = "SUST"       # sustantivo: gato, casa
-    PROPN = "NPROP"     # nombre propio: Ana, Madrid
-    PRON = "PRON"       # pronombre personal sujeto: yo, ella, nosotros
-    ADJ = "ADJ"         # adjetivo: negro, pequeña
-    VERB = "V"          # verbo: come, comieron
-    ADV = "ADV"         # adverbio: rápidamente, muy
-    PREP = "PREP"       # preposición: en, con, de
-    CONJ = "CONJ"       # conjunción: y, o  (TODO(P1): ¿entra en la gramática?)
+    PRN = "Prn"         # pronombre: él, ella, ellos
+    DET = "Det"         # determinante: el, la, un, los
+    POS = "Pos"         # posesivo: su, sus, mi
+    NOUN = "Noun"       # sustantivo: elefante, niña
+    ADJ = "Adj"         # adjetivo: grande, rojos
+    INTENS = "Intens"   # intensificador: muy, bastante
+    ADV = "Adv"         # adverbio: ayer, rápidamente
+    VERB = "Verb"       # verbo: come, mató
+    PREP = "Prep"       # preposición: en, con, de
+    X = "X"             # cualquier otra palabra (fuera de la gramática)
 
 
-# Allowed feature values (the strings that appear in data/lexicon.json).
-GENDERS = {"masc", "fem"}
+CATEGORY_BY_LABEL = {c.value: c for c in Category}
+
+# Allowed feature values (docs/gramatica_es.md, 1.3).
+GENDERS = {"m", "f"}
 NUMBERS = {"sg", "pl"}
 PERSONS = {1, 2, 3}
-TENSES = {"presente", "preterito"}  # TODO(P1): confirm the two tenses of the grammar.
+TENSES = {"pres", "pret"}
 
 
 @dataclass(frozen=True)
 class Features:
-    """Morphological features. None = the feature does not apply.
+    """Morphological features. None = the feature does not apply or is not marked.
 
-    - gender:  "masc" | "fem"           (DET, SUST, ADJ, PRON)
-    - number:  "sg" | "pl"              (DET, SUST, ADJ, PRON, V)
-    - person:  1 | 2 | 3                (PRON, V; nouns are 3rd person)
-    - tense:   "presente" | "preterito" (V)
+    - gender:  "m" | "f"        (Det, Noun, Adj, Prn; Pos and invariable
+                                  adjectives such as "grande" have none)
+    - number:  "sg" | "pl"      (Det, Pos, Noun, Adj, Prn, Verb)
+    - person:  1 | 2 | 3        (Prn, Verb; nouns are 3rd person)
+    - tense:   "pres" | "pret"  (Verb)
     """
 
     gender: str | None = None
@@ -61,14 +66,14 @@ class Features:
             raise ValueError(f"invalid tense {self.tense!r}")
 
     def __str__(self) -> str:
-        """Compact form for the demo: "masc, sg" or "3, pl, preterito"."""
+        """Compact form for the demo: "m, sg" or "sg, 3, pret"."""
         values = [self.gender, self.number, self.person, self.tense]
         return ", ".join(str(v) for v in values if v is not None)
 
 
 @dataclass(frozen=True)
 class Reading:
-    """One possible analysis of a word: gato -> (SUST, gato, masc, sg)."""
+    """One possible analysis of a word: niña -> Noun (f, sg)."""
 
     category: Category
     lemma: str
@@ -83,11 +88,10 @@ class Reading:
 class Token:
     """A word of the sentence.
 
-    - word:     the word as written, without the final punctuation ("Gatos").
+    - word:     the word as written, without the final period ("Ella").
     - position: index of the word in the sentence, starting at 1.
     - column:   column of its first character, starting at 1.
-    - readings: every reading found in the lexicon (at least one, unless the
-                word is unknown; unknown words produce a LexicalError).
+    - readings: every reading found in the lexicon; (Reading(X),) if unknown.
     """
 
     word: str
@@ -99,9 +103,17 @@ class Token:
     def is_ambiguous(self) -> bool:
         return len(self.readings) > 1
 
+    @property
+    def is_unknown(self) -> bool:
+        return all(r.category is Category.X for r in self.readings)
+
     def readings_of(self, category: Category) -> list[Reading]:
         """Readings of this word with the given category (helper for the parser)."""
         return [r for r in self.readings if r.category is category]
+
+    def has(self, *categories: Category) -> bool:
+        """Can this word be any of these categories? (FIRST-set checks in the parser)."""
+        return any(r.category in categories for r in self.readings)
 
     def __str__(self) -> str:
         options = " | ".join(str(r) for r in self.readings) or "?"

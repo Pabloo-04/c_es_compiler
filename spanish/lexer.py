@@ -1,24 +1,28 @@
 """Lexer for Spanish sentences.  Owner: Person 3 (adapted from fase1/compiler/lexer.py).
 
-Input:  one sentence as text, e.g. "El gato negro come pescado."
+Input:  one sentence as text, e.g. "Ella come una manzana."
 Output: (tokens, errors)
   - tokens: list of Token (word, position, column, readings from the lexicon).
-  - errors: list of LexicalError (unknown words, invalid characters).
+  - errors: list of LexicalError (only for characters that cannot be part of a word).
 
-Same rules as Phase 1: report and keep going, never raise.
+Same rule as Phase 1: report and keep going, never raise.
 
 Differences with Phase 1:
   - The alphabet now includes á é í ó ú ü ñ and their uppercase forms.
   - There are no numbers or operators: a token is a word.
   - The category does not come from the shape of the word (regex) but from the
-    lexicon: the same shape [a-záéíóúüñ]+ can be SUST, V or ADJ.
+    lexicon: the same shape can be Noun, Verb or Adj.
+  - A word that is NOT in the lexicon is not an error here: it gets one reading
+    of category X ("outside the grammar", docs/gramatica_es.md 2.2) and the
+    parser rejects the sentence as "sintactico". That way the parser output
+    still has its tags (the word is tagged X).
 """
 
 from .errors import LexicalError
 from .lexicon import Lexicon
-from .tokens import Token
+from .tokens import Category, Reading, Token
 
-# Final punctuation allowed (and ignored) at the end of the sentence.
+# The agreed test sentences end with a single period (docs/gramatica_es.md 2.3).
 FINAL_PUNCTUATION = ".!?"
 
 
@@ -26,6 +30,10 @@ def is_letter(c: str) -> bool:
     # str.isalpha() accepts á, ñ, ü... and also letters from any alphabet.
     # TODO(P3): restrict to the Spanish alphabet if the team prefers it.
     return len(c) == 1 and c.isalpha()
+
+
+def unknown_reading(word: str) -> Reading:
+    return Reading(Category.X, word.lower())
 
 
 class Lexer:
@@ -40,14 +48,10 @@ class Lexer:
         #   1. Walk the sentence character by character keeping the column (1-based).
         #   2. Spaces separate words.
         #   3. A run of letters is a word: position = 1, 2, 3...
-        #      readings = self.lexicon.lookup(word)
-        #      no readings -> LexicalError(position, word, "palabra desconocida")
-        #      (still add the Token with readings=() so positions do not shift).
+        #      readings = self.lexicon.lookup(word) or (unknown_reading(word),)
         #   4. Final punctuation (FINAL_PUNCTUATION) at the end: ignore it.
-        #   5. Any other character -> LexicalError(None or position, char,
-        #      f"carácter inválido '{c}'") and keep going.
-        # TODO(P3): mayúscula inicial ("El") -> lookup ya es insensible a mayúsculas,
-        #           pero ¿se acepta "eL"? ¿y nombres propios que no están en el léxico?
+        #   5. Any other character -> LexicalError(None, c, f"carácter inválido '{c}'")
+        #      and keep going.
         raise NotImplementedError("TODO(P3): Lexer.analyze")
 
 

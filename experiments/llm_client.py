@@ -4,7 +4,7 @@ The notebook calls only ask_llm(); the provider is chosen with one string, so
 the experiment can be repeated with another model without touching the rest.
 
     from experiments.llm_client import ask_llm
-    answer = ask_llm(prompt, provider="manual")
+    raw = ask_llm(prompt, id=1, system="llm_zero", provider="manual", model="...")
 
 Providers:
   - "manual":    prints the prompt and waits for you to paste the answer
@@ -12,30 +12,33 @@ Providers:
   - "anthropic", "openai", "gemini": TODO(P5), only the one the team uses.
 
 API keys: NEVER in the code or the notebook. Put them in a `.env` file at the
-root (already in .gitignore) or in an environment variable, and read them
-with os.environ.
+root (already in .gitignore) or in an environment variable; api_key() reads them.
 
-Every call is appended to results/logs/llm_log.jsonl (the assignment asks
-to keep ALL prompts and answers).
+Log (docs/gramatica_es.md, 2.6): every call is appended to
+results/logs/llm.jsonl, even when the answer is invalid:
+
+    {"id": 1, "sistema": "llm_zero", "modelo": "...", "temperature": 0,
+     "prompt": "...", "respuesta_cruda": "...", "fecha": "2026-11-25T14:03:11-06:00"}
+
+Before calling the API, ask_llm() looks for the same id and sistema in the log
+and, if found, reuses that answer (no repeated cost, reproducible runs).
 """
 
 import json
 import os
-import time
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent
-LOG_PATH = ROOT / "results" / "logs" / "llm_log.jsonl"
+from evaluation.formats import LLM_LOG_PATH, ROOT
 
-Provider = Callable[[str, dict], str]
+Provider = Callable[[str, str, float], str]   # (prompt, model, temperature) -> raw answer
 
 
 # ----------------------------------------------------------------------
 # Providers
 # ----------------------------------------------------------------------
-def manual_provider(prompt: str, options: dict) -> str:
+def manual_provider(prompt: str, model: str, temperature: float) -> str:
     """Show the prompt; the person pastes the answer and ends with a line "FIN"."""
     print(prompt)
     print("\n--- Pega la respuesta del modelo y termina con una línea que diga FIN ---")
@@ -45,19 +48,18 @@ def manual_provider(prompt: str, options: dict) -> str:
     return "\n".join(lines)
 
 
-def anthropic_provider(prompt: str, options: dict) -> str:
-    # TODO(P5): official SDK `anthropic`; key in os.environ["ANTHROPIC_API_KEY"];
-    #           model and temperature from `options`.
+def anthropic_provider(prompt: str, model: str, temperature: float) -> str:
+    # TODO(P5): official SDK `anthropic`; api_key("ANTHROPIC_API_KEY").
     raise NotImplementedError("TODO(P5): anthropic_provider")
 
 
-def openai_provider(prompt: str, options: dict) -> str:
-    # TODO(P5): official SDK `openai`; key in os.environ["OPENAI_API_KEY"].
+def openai_provider(prompt: str, model: str, temperature: float) -> str:
+    # TODO(P5): official SDK `openai`; api_key("OPENAI_API_KEY").
     raise NotImplementedError("TODO(P5): openai_provider")
 
 
-def gemini_provider(prompt: str, options: dict) -> str:
-    # TODO(P5): official SDK `google-genai`; key in os.environ["GOOGLE_API_KEY"].
+def gemini_provider(prompt: str, model: str, temperature: float) -> str:
+    # TODO(P5): official SDK `google-genai`; api_key("GOOGLE_API_KEY").
     raise NotImplementedError("TODO(P5): gemini_provider")
 
 
@@ -74,40 +76,57 @@ PROVIDERS: dict[str, Provider] = {
 # ----------------------------------------------------------------------
 def ask_llm(
     prompt: str,
-    provider: str = "manual",
     *,
-    log: bool = True,
-    metadata: dict | None = None,
-    **options,
+    id: int,
+    system: str,
+    provider: str = "manual",
+    model: str = "manual",
+    temperature: float = 0,
+    log_path: Path = LLM_LOG_PATH,
 ) -> str:
-    """Send `prompt` and return the answer text.
+    """Return the raw answer for (id, system), from the log if it is already there.
 
-    - options:  provider settings, e.g. model="...", temperature=0.
-                Use temperature 0 so the experiment can be repeated.
-    - metadata: saved in the log, e.g. {"id": "S001", "modo": "zero_shot"}.
+    - system: "llm_zero" or "llm_few".
+    - model:  the EXACT model name (it goes in the log and in the report).
+    - temperature: 0 so the experiment can be repeated.
     """
     if provider not in PROVIDERS:
         raise ValueError(f"proveedor desconocido {provider!r}; usa uno de {sorted(PROVIDERS)}")
-    start = time.perf_counter()
-    answer = PROVIDERS[provider](prompt, options)
-    seconds = time.perf_counter() - start
-    if log:
-        log_interaction({
-            "proveedor": provider,
-            "opciones": options,
-            **(metadata or {}),
-            "prompt": prompt,
-            "respuesta": answer,
-            "segundos": round(seconds, 3),
-        })
-    return answer
+    cached = find_in_log(id, system, log_path)
+    if cached is not None:
+        if cached["prompt"] != prompt:
+            print(f"Aviso: id {id} ({system}) está en el log con otro prompt; se reutiliza la respuesta "
+                  "guardada. Si el prompt cambió a propósito, borra esas líneas del log.")
+        return cached["respuesta_cruda"]
+    raw = PROVIDERS[provider](prompt, model, temperature)
+    append_to_log({
+        "id": id,
+        "sistema": system,
+        "modelo": model,
+        "temperature": temperature,
+        "prompt": prompt,
+        "respuesta_cruda": raw,
+        "fecha": datetime.now().astimezone().isoformat(timespec="seconds"),
+    }, log_path)
+    return raw
 
 
-def log_interaction(record: dict, path: Path = LOG_PATH) -> None:
-    """Append one JSON line with a UTC timestamp."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    record = {"fecha": datetime.now(timezone.utc).isoformat(timespec="seconds"), **record}
-    with path.open("a", encoding="utf-8") as f:
+def find_in_log(id: int, system: str, log_path: Path = LLM_LOG_PATH) -> dict | None:
+    """Last log entry for this id and system, or None."""
+    if not log_path.exists():
+        return None
+    found = None
+    for line in log_path.read_text(encoding="utf-8").splitlines():
+        if line.strip():
+            entry = json.loads(line)
+            if entry.get("id") == id and entry.get("sistema") == system:
+                found = entry
+    return found
+
+
+def append_to_log(record: dict, log_path: Path = LLM_LOG_PATH) -> None:
+    log_path.parent.mkdir(parents=True, exist_ok=True)
+    with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 

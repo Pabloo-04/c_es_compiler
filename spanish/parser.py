@@ -1,109 +1,191 @@
-"""Recursive-descent parser for the Spanish grammar.
+"""Recursive-descent parser for the Spanish grammar S -> NP VP.
 
-Input: tokens for one sentence.
-Output: (tree, []) on success, or (None, [error]) on failure.
+Each phrase method consumes its tokens and builds a node of the syntax tree.
+Optional phrases use FIRST sets. Repeated modifiers are attached directly
+to their parent, following the tree format agreed by the team.
 """
 
 from .errors import ParseError
-from .grammar import productions_of
-from .tokens import Category, Token
+from .grammar import FIRST
+from .tokens import CATEGORY_BY_LABEL, Category, Token
 from .tree import Node
 
 
 class Parser:
     def __init__(self, tokens: list[Token]) -> None:
         self.tokens = tokens
-        self.furthest = 0
+        self.pos = 0
+        self.errors: list[ParseError] = []
 
-        # Each non-terminal has a corresponding parser method.
-        self.phrases = {
-            "O": self.sentence,
-            "SN": self.noun_phrase,
-            "SV": self.verb_phrase,
-            "SA": self.adjective_phrase,
-            "SAdv": self.adverb_phrase,
-            "SP": self.prepositional_phrase,
-        }
+    def current(self) -> Token | None:
+        if self.pos >= len(self.tokens):
+            return None
+        return self.tokens[self.pos]
+
+    def starts(self, nonterminal: str) -> bool:
+        """Check whether the current token can start this phrase."""
+        token = self.current()
+        if token is None:
+            return False
+        categories = [CATEGORY_BY_LABEL[label] for label in FIRST[nonterminal]]
+        return token.has(*categories)
+
+    def check(self, category: Category) -> bool:
+        token = self.current()
+        return token is not None and token.has(category)
+
+    def match(self, category: Category) -> Node | None:
+        """Consume one token if it has a reading of the requested category."""
+        token = self.current()
+        if token is None:
+            return None
+
+        readings = token.readings_of(category)
+        if not readings:
+            return None
+
+        self.pos += 1
+        return Node.leaf(token, readings[0])
+
+    def error(self, message: str) -> None:
+        token = self.current()
+        if token is None:
+            self.errors.append(ParseError(None, None, message))
+            return
+
+        if token.has(Category.X):
+            message = f"'{token.word}' no está en la gramática."
+        self.errors.append(ParseError(token.position, token.word, message))
+
+    def expect(self, category: Category, description: str) -> Node | None:
+        """Consume a required category or record the reason for rejection."""
+        node = self.match(category)
+        if node is None:
+            if self.current() is None:
+                self.error(f"La oración terminó, se esperaba {description}.")
+            else:
+                self.error(f"Se esperaba {description}.")
+        return node
 
     def parse(self) -> tuple[Node | None, list[ParseError]]:
-        """Return the first sentence tree that consumes every token."""
-        for tree, end in self.sentence(0):
-            if end == len(self.tokens):
-                return tree, []
+        """Accept only when the sentence consumes all tokens."""
+        tree = self.sentence()
+        if self.errors:
+            return None, self.errors[:1]
 
-        if self.furthest == len(self.tokens):
-            error = ParseError(None, None, "Oración incompleta.")
-        else:
-            token = self.tokens[self.furthest]
-            error = ParseError(
-                token.position,
-                token.word,
-                f"No se esperaba '{token.word}' en esta posición.",
-            )
+        token = self.current()
+        if token is not None:
+            self.error(f"No se esperaba '{token.word}'.")
+            return None, self.errors
 
-        return None, [error]
+        return tree, []
 
-    # One entry point per non-terminal in grammar.py.
+    def sentence(self) -> Node | None:
+        """S -> NP VP."""
+        subject = self.noun_phrase()
+        if subject is None:
+            return None
 
-    def sentence(self, pos: int):
-        """O: oración."""
-        yield from self.phrase("O", pos)
+        predicate = self.verb_phrase()
+        if predicate is None:
+            return None
 
-    def noun_phrase(self, pos: int):
-        """SN: sintagma nominal."""
-        yield from self.phrase("SN", pos)
+        return Node("S", [subject, predicate])
 
-    def verb_phrase(self, pos: int):
-        """SV: sintagma verbal."""
-        yield from self.phrase("SV", pos)
+    def noun_phrase(self) -> Node | None:
+        """NP -> NPbase PP*. Attach each PP to the nearest noun phrase."""
+        base = self.noun_phrase_base()
+        if base is None:
+            return None
 
-    def adjective_phrase(self, pos: int):
-        """SA: sintagma adjetival."""
-        yield from self.phrase("SA", pos)
+        children = [base]
+        while self.starts("PP"):
+            modifier = self.prepositional_phrase()
+            if modifier is None:
+                return None
+            children.append(modifier)
 
-    def adverb_phrase(self, pos: int):
-        """SAdv: sintagma adverbial."""
-        yield from self.phrase("SAdv", pos)
+        return Node("NP", children)
 
-    def prepositional_phrase(self, pos: int):
-        """SP: sintagma preposicional."""
-        yield from self.phrase("SP", pos)
+    def noun_phrase_base(self) -> Node | None:
+        """NPbase -> Prn | Det Nom | Pos Nom."""
+        pronoun = self.match(Category.PRN)
+        if pronoun is not None:
+            return Node("NPbase", [pronoun])
 
-    def phrase(self, label: str, pos: int):
-        """Try each production for this non-terminal from the same position."""
-        for production in productions_of(label):
-            for children, end in self.sequence(production.right, pos):
-                yield Node(label, children), end
+        determiner = self.match(Category.DET) or self.match(Category.POS)
+        if determiner is None:
+            self.error("Se esperaba un pronombre, determinante o posesivo.")
+            return None
 
-    def sequence(self, symbols: tuple[str, ...], pos: int):
-        """Recognize all symbols on the right-hand side, from left to right."""
-        if not symbols:
-            yield [], pos
-            return
+        nominal = self.nominal()
+        if nominal is None:
+            return None
 
-        first_symbol = symbols[0]
-        remaining_symbols = symbols[1:]
+        return Node("NPbase", [determiner, nominal])
 
-        for first_node, next_pos in self.symbol(first_symbol, pos):
-            for other_nodes, end in self.sequence(remaining_symbols, next_pos):
-                yield [first_node, *other_nodes], end
+    def nominal(self) -> Node | None:
+        """Nom -> Noun AdjP?."""
+        noun = self.expect(Category.NOUN, "un sustantivo")
+        if noun is None:
+            return None
 
-    def symbol(self, name: str, pos: int):
-        """Expand a non-terminal or match a lexical category."""
-        if name in self.phrases:
-            yield from self.phrases[name](pos)
-            return
+        children = [noun]
+        if self.starts("AdjP"):
+            adjective = self.adjective_phrase()
+            if adjective is None:
+                return None
+            children.append(adjective)
 
-        if pos >= len(self.tokens):
-            return
+        return Node("Nom", children)
 
-        token = self.tokens[pos]
-        category = Category(name)
+    def adjective_phrase(self) -> Node | None:
+        """AdjP -> Adj | Intens Adj."""
+        intensifier = self.match(Category.INTENS)
+        adjective = self.expect(Category.ADJ, "un adjetivo")
+        if adjective is None:
+            return None
 
-        for reading in token.readings_of(category):
-            next_pos = pos + 1
-            self.furthest = max(self.furthest, next_pos)
-            yield Node.leaf(token, reading), next_pos
+        if intensifier is None:
+            return Node("AdjP", [adjective])
+        return Node("AdjP", [intensifier, adjective])
+
+    def verb_phrase(self) -> Node | None:
+        """VP -> Verb NP? (PP | Adv)*."""
+        verb = self.expect(Category.VERB, "un verbo")
+        if verb is None:
+            return None
+
+        children = [verb]
+        if self.starts("NP"):
+            obj = self.noun_phrase()
+            if obj is None:
+                return None
+            children.append(obj)
+
+        while self.starts("PP") or self.check(Category.ADV):
+            if self.starts("PP"):
+                modifier = self.prepositional_phrase()
+            else:
+                modifier = self.match(Category.ADV)
+
+            if modifier is None:
+                return None
+            children.append(modifier)
+
+        return Node("VP", children)
+
+    def prepositional_phrase(self) -> Node | None:
+        """PP -> Prep NP."""
+        preposition = self.expect(Category.PREP, "una preposición")
+        if preposition is None:
+            return None
+
+        complement = self.noun_phrase()
+        if complement is None:
+            return None
+
+        return Node("PP", [preposition, complement])
 
 
 def parse(tokens: list[Token]) -> tuple[Node | None, list[ParseError]]:

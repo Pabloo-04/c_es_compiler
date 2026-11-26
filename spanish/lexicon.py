@@ -1,38 +1,38 @@
 """The lexicon: words with their categories and features.  Owner: Person 3.
 
-The data lives in data/lexicon.json (one entry per written form):
+The data lives in data/lexicon.json, in the format of docs/gramatica_es.md (1.3):
 
-    "gatos": [{"categoria": "SUST", "lema": "gato", "genero": "masc", "numero": "pl"}],
-    "bajo":  [{"categoria": "ADJ",  "lema": "bajo", "genero": "masc", "numero": "sg"},
-              {"categoria": "PREP", "lema": "bajo"}],
+    "niña":  {"cat": "Noun", "gen": "f", "num": "sg"},
+    "mató":  {"cat": "Verb", "tiempo": "pret", "pers": 3, "num": "sg"},
 
-Keys are lowercase. A word with several entries is ambiguous; the parser
-chooses. Loading and lookup are implemented; building the word list is P3's job.
+An ambiguous word has a LIST of entries instead of one:
+
+    "bajo":  [{"cat": "Adj", "gen": "m", "num": "sg"}, {"cat": "Prep"}],
+
+Keys are lowercase; "lema" is optional (defaults to the word). Loading and
+lookup are implemented; building the word list is P3's job.
 """
 
 import json
 from pathlib import Path
 
-from .tokens import Category, Features, Reading
+from .tokens import CATEGORY_BY_LABEL, Category, Features, Reading
 
 DEFAULT_PATH = Path(__file__).resolve().parent.parent / "data" / "lexicon.json"
 
-_CATEGORY_BY_LABEL = {c.value: c for c in Category}
 
-
-def reading_from_json(entry: dict) -> Reading:
-    """{"categoria": "SUST", "lema": "gato", "genero": "masc", "numero": "sg"} -> Reading."""
-    try:
-        category = _CATEGORY_BY_LABEL[entry["categoria"]]
-    except KeyError as e:
-        raise ValueError(f"categoría inválida o ausente en {entry}") from e
+def reading_from_json(word: str, entry: dict) -> Reading:
+    """{"cat": "Noun", "gen": "f", "num": "sg"} -> Reading."""
+    label = entry.get("cat")
+    if label not in CATEGORY_BY_LABEL or label == Category.X.value:
+        raise ValueError(f"'{word}': categoría inválida o ausente en {entry}")
     features = Features(
-        gender=entry.get("genero"),
-        number=entry.get("numero"),
-        person=entry.get("persona"),
+        gender=entry.get("gen"),
+        number=entry.get("num"),
+        person=entry.get("pers"),
         tense=entry.get("tiempo"),
     )
-    return Reading(category, entry["lema"], features)
+    return Reading(CATEGORY_BY_LABEL[label], entry.get("lema", word), features)
 
 
 class Lexicon:
@@ -43,10 +43,11 @@ class Lexicon:
     def load(cls, path: Path | str = DEFAULT_PATH) -> "Lexicon":
         raw = json.loads(Path(path).read_text(encoding="utf-8"))
         entries = {}
-        for word, readings in raw.items():
+        for word, value in raw.items():
             if word.startswith("_"):      # "_comentario" and similar keys are ignored
                 continue
-            entries[word] = [reading_from_json(r) for r in readings]
+            items = value if isinstance(value, list) else [value]
+            entries[word] = [reading_from_json(word, item) for item in items]
         return cls(entries)
 
     def lookup(self, word: str) -> tuple[Reading, ...]:
@@ -62,5 +63,6 @@ class Lexicon:
     def words(self) -> list[str]:
         return sorted(self._entries)
 
-    # TODO(P3): words_by_category(category) -> list[str]: useful for the docs
-    #           and for P4 when building sentences for the test set.
+    def words_by_category(self, category: Category) -> list[str]:
+        """Words that can be this category (for docs, the LLM prompt and the test set)."""
+        return sorted(w for w, rs in self._entries.items() if any(r.category is category for r in rs))

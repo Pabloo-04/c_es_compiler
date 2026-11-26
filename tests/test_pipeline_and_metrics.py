@@ -1,61 +1,87 @@
 """Integration over the whole test set, and the metrics.
 
 Owner: Person 5 (with P2 and P4). The pipeline test is the final check of
-Phase 2: our parser must accept exactly the covered sentences, with the
-expected tree, and reject the others with the expected error type.
+Phase 2: for every sentence of data/test_set.csv our system must give the
+expected acepta / tipo_error and, when it parses, the expected tags and
+syntactic functions.
 """
 
 import pytest
 
 from evaluation import metrics
 from evaluation.formats import Prediction, TestItem, load_test_set
+from spanish.grammar import tree_shape_errors
 from spanish.pipeline import analyze
-from spanish.tree import same_tree
 
 ITEMS = load_test_set()
 
 
-@pytest.mark.parametrize("item", ITEMS, ids=[i.id for i in ITEMS])
+@pytest.mark.parametrize("item", ITEMS, ids=[str(i.id) for i in ITEMS])
 def test_parser_on_the_test_set(item):
     result = analyze(item.sentence)
-    assert result.accepted == item.covered, [str(e) for e in result.errors]
-    if item.covered:
-        assert same_tree(result.tree, item.tree)
-    else:
-        assert result.error_type == item.error_type
+    assert result.accepted == item.in_grammar, [str(e) for e in result.errors]
+    assert result.error_type == item.error_type
+    if result.tree is not None:
+        assert tree_shape_errors(result.tree) == []
+        assert [tuple(t) for t in result.tags] == list(item.tags)
+        assert (result.subject, result.verb, result.object) == (item.subject, item.verb, item.object)
 
 
 # ---------------------------------------------------------------------------
-# Metrics (small hand-made case)
+# Metrics (small hand-made case, docs/gramatica_es.md 2.7)
 # ---------------------------------------------------------------------------
-def item(id_, covered, grammatical=True, tree="(O (SN (PRON ella)) (SV (V come)))", error=None):
-    return TestItem(id_, "simple", "x", grammatical, covered, tree if covered else None,
-                    None if covered else (error or "sintactico"))
+def item(id_, in_grammar, valid_spanish=None, level=1):
+    valid = in_grammar if valid_spanish is None else valid_spanish
+    return TestItem(id_, level, "X.", in_grammar, valid, None if in_grammar else "sintactico",
+                    ("svo",), (("ella", "Prn"), ("come", "Verb")), "ella", "come", "")
 
 
 PAIRS = [
-    (item("A", True), Prediction("A", "s", accepted=True)),            # true accept
-    (item("B", True), Prediction("B", "s", accepted=False)),           # wrong reject
-    (item("C", False), Prediction("C", "s", accepted=True)),           # wrong accept
-    (item("D", False), Prediction("D", "s", accepted=False)),          # true reject
-    (item("E", False), Prediction("E", "s", accepted=False)),          # true reject
+    (item(1, True), Prediction(1, "parser", accepts=True)),     # TP
+    (item(2, True), Prediction(2, "parser", accepts=False)),    # FN
+    (item(3, False), Prediction(3, "parser", accepts=True)),    # FP
+    (item(4, False), Prediction(4, "parser", accepts=False)),   # TN
+    (item(5, False), Prediction(5, "parser", accepts=False)),   # TN
+    (item(6, False), Prediction(6, "spacy", accepts=None)),     # excluded: no decision
 ]
 
 
-def test_precision():
+def test_confusion():
+    assert metrics.confusion(PAIRS) == {"TP": 1, "FP": 1, "FN": 1, "TN": 2}
+
+
+def test_precision_coverage_and_rejection():
     assert metrics.precision(PAIRS) == pytest.approx(1 / 2)
-
-
-def test_coverage():
     assert metrics.coverage(PAIRS) == pytest.approx(1 / 2)
-
-
-def test_correct_rejection_rate():
     assert metrics.correct_rejection_rate(PAIRS) == pytest.approx(2 / 3)
 
 
 def test_precision_without_acceptances_is_none():
-    assert metrics.precision([(item("A", True), Prediction("A", "s", accepted=False))]) is None
+    assert metrics.precision([(item(1, True), Prediction(1, "parser", accepts=False))]) is None
 
 
-# TODO(P5 con P4): tree_accuracy, tagging_accuracy, error_confusion, by_level.
+def test_against_valid_spanish():
+    # The LLM accepts Spanish that the grammar does not generate (drift).
+    pairs = [(item(1, False, valid_spanish=True), Prediction(1, "llm_zero", accepts=True))]
+    assert metrics.precision(pairs, "in_grammar") == 0
+    assert metrics.precision(pairs, "valid_spanish") == 1
+
+
+def test_tagging_accuracy_and_length_mismatch():
+    pairs = [
+        (item(1, True), Prediction(1, "spacy", None, tags=[["ella", "Prn"], ["come", "Verb"]])),   # 2/2
+        (item(2, True), Prediction(2, "spacy", None, tags=[["ella", "Prn"], ["come", "Noun"]])),   # 1/2
+        (item(3, True), Prediction(3, "spacy", None, tags=[["ella", "Prn"]])),                     # mismatch
+    ]
+    assert metrics.tagging_accuracy(pairs) == pytest.approx(3 / 4)
+    assert metrics.length_mismatches(pairs) == [3]
+
+
+def test_function_accuracy():
+    pairs = [
+        (item(1, True), Prediction(1, "spacy", None, subject="ella", verb="come", object="")),
+        (item(2, True), Prediction(2, "spacy", None, subject="", verb="come", object="")),
+        (item(3, True), Prediction(3, "transformers", None)),                                     # excluded
+    ]
+    assert metrics.function_accuracy(pairs, "subject") == pytest.approx(1 / 2)
+    assert metrics.function_accuracy(pairs, "verb") == 1

@@ -1,169 +1,190 @@
 """The Spanish CFG as data.  Owner: Person 1.
 
-Single source of truth for the grammar:
-  - docs/gramatica_es.md explains it (P1).
-  - parser.py implements it by hand, one method per non-terminal (P2).
-  - experiments/prompts.py sends it to the LLM with as_bnf() (P5).
-  - tests/test_grammar.py checks that it is well formed.
+Executable copy of docs/gramatica_es.md, Part 1. Single source of truth for:
+  - parser.py, which implements PARSER_PRODUCTIONS by hand (P2);
+  - experiments/prompts.py, which sends the rules to the LLM with as_bnf() (P5);
+  - tests/test_grammar_and_data.py, which checks the grammar and the data.
 
-Agreement (gender, number, person) is NOT in the productions: it is checked
-afterwards by agreement.py (P3). That split is the point of the project: the
-CFG describes the structure and the features describe the context, as with
-the symbol table in Phase 1.
+If a rule changes here it must change in the document too (and vice versa),
+and the team must be told: the grammar also goes in the LLM prompt.
 
-Notation: non-terminals are phrase labels (O, SN, SV...), terminals are the
-lexical categories of tokens.Category (DET, SUST, V...).
+Two versions, as in the document:
+  - REPORT_PRODUCTIONS (section 1.1): readable, with left recursion.
+  - PARSER_PRODUCTIONS (section 1.2): without left recursion, for recursive descent.
+
+Agreement (gender, number, person) is NOT in the productions: agreement.py
+checks it on the tree (section 1.4).
 """
 
+import re
 from dataclasses import dataclass
 
 from .tokens import Category
 
-START = "O"
+START = "S"
+EPSILON = "ε"
 
-# Lexical categories = terminals of the grammar.
-TERMINALS = {c.value for c in Category}
-
-# Human-readable names, for docs and for the LLM prompt.
-LABELS = {
-    "O": "oración",
-    "SN": "sintagma nominal",
-    "SV": "sintagma verbal",
-    "SP": "sintagma preposicional",
-    "SA": "sintagma adjetival",
-    "SAdv": "sintagma adverbial",
-    "DET": "determinante",
-    "SUST": "sustantivo",
-    "NPROP": "nombre propio",
-    "PRON": "pronombre",
-    "ADJ": "adjetivo",
-    "V": "verbo",
-    "ADV": "adverbio",
-    "PREP": "preposición",
-    "CONJ": "conjunción",
-}
+# Lexical categories = terminals of the grammar (X is not: it never derives).
+TERMINALS = {c.value for c in Category if c is not Category.X}
 
 
 @dataclass(frozen=True)
 class Production:
     left: str
-    right: tuple[str, ...]
+    right: tuple[str, ...]      # () = ε
 
     def __str__(self) -> str:
-        return f"{self.left} → {' '.join(self.right)}"
+        return f"{self.left} → {' '.join(self.right) or EPSILON}"
 
 
 def P(left: str, right: str) -> Production:
-    """Shorthand: P("SN", "DET SUST SA")."""
-    return Production(left, tuple(right.split()))
+    """Shorthand: P("NP", "Det Nom"); P("NP'", "ε") for the empty production."""
+    symbols = tuple(s for s in right.split() if s != EPSILON)
+    return Production(left, symbols)
 
 
 # ----------------------------------------------------------------------
-# Productions
+# Section 1.1: extended grammar (report version). ★ = new, rest from Luque [1].
 # ----------------------------------------------------------------------
-# STARTING POINT, to be completed and justified by P1 in docs/gramatica_es.md.
-# The assignment asks for: Subject-Verb-Object sentences, adjectives, adverbs,
-# prepositional phrases, two verb tenses (features, not productions) and basic
-# agreement (features, not productions).
-PRODUCTIONS: list[Production] = [
-    # Oración: sujeto + predicado
-    P("O", "SN SV"),
-
-    # Sintagma nominal
-    P("SN", "DET SUST"),
-    P("SN", "DET SUST SA"),
-    P("SN", "NPROP"),
-    P("SN", "PRON"),
-    # TODO(P1): ¿SN → DET SA SUST ("la pequeña niña")? ¿SN → DET SUST SP ("el gato de Ana")?
-    #           Ojo: SN → DET SUST SP crea ambigüedad con SV → V SN SP.
-
-    # Sintagma adjetival
-    P("SA", "ADJ"),
-    P("SA", "ADV ADJ"),        # "muy grande"
-
-    # Sintagma verbal
-    P("SV", "V"),
-    P("SV", "V SN"),
-    P("SV", "V SP"),
-    P("SV", "V SN SP"),
-    P("SV", "V SAdv"),
-    P("SV", "V SN SAdv"),
-    # TODO(P1): ¿adverbio antes del verbo? ("Ana siempre come")
-
-    # Sintagma adverbial
-    P("SAdv", "ADV"),
-
-    # Sintagma preposicional
-    P("SP", "PREP SN"),
+REPORT_PRODUCTIONS: list[Production] = [
+    P("S", "NP VP"),
+    P("NP", "Prn"), P("NP", "Det Nom"), P("NP", "Pos Nom"), P("NP", "NP PP"),
+    P("Nom", "Noun"), P("Nom", "Noun AdjP"),                    # ★
+    P("AdjP", "Adj"), P("AdjP", "Intens Adj"),                  # ★
+    P("VP", "Verb NP"), P("VP", "VP PP"),
+    P("VP", "Verb"),                                            # ★
+    P("VP", "VP Adv"),                                          # ★
+    P("PP", "Prep NP"),
 ]
+
+# ----------------------------------------------------------------------
+# Section 1.2: without left recursion (parser version).
+# ----------------------------------------------------------------------
+PARSER_PRODUCTIONS: list[Production] = [
+    P("S", "NP VP"),
+    P("NP", "NPbase NP'"),
+    P("NPbase", "Prn"), P("NPbase", "Det Nom"), P("NPbase", "Pos Nom"),
+    P("NP'", "PP NP'"), P("NP'", "ε"),
+    P("Nom", "Noun AdjOpc"),
+    P("AdjOpc", "AdjP"), P("AdjOpc", "ε"),
+    P("AdjP", "Adj"), P("AdjP", "Intens Adj"),
+    P("VP", "Verb ObjOpc VP'"),
+    P("ObjOpc", "NP"), P("ObjOpc", "ε"),
+    P("VP'", "PP VP'"), P("VP'", "Adv VP'"), P("VP'", "ε"),
+    P("PP", "Prep NP"),
+]
+
+# Kept for code written against the first version of this module.
+PRODUCTIONS = PARSER_PRODUCTIONS
+
+# Auxiliary non-terminals of the parser grammar: they never appear in trees.
+AUXILIARY = {"NP'", "AdjOpc", "ObjOpc", "VP'"}
+
+# FIRST sets (document, section 1.2): which categories can start each non-terminal.
+FIRST = {
+    "S": {"Prn", "Det", "Pos"},
+    "NP": {"Prn", "Det", "Pos"},
+    "NPbase": {"Prn", "Det", "Pos"},
+    "Nom": {"Noun"},
+    "AdjP": {"Adj", "Intens"},
+    "VP": {"Verb"},
+    "PP": {"Prep"},
+}
+
+# ----------------------------------------------------------------------
+# Flattened tree shapes (team decision, document section 2.4).
+# Allowed sequence of child labels for each phrase label, as a regex over
+# space-separated labels. The auxiliary nodes are expanded in place:
+#   NP  → NPbase NP'        becomes  NP  → NPbase PP*
+#   Nom → Noun AdjOpc       becomes  Nom → Noun AdjP?
+#   VP  → Verb ObjOpc VP'   becomes  VP  → Verb NP? (PP | Adv)*
+# ----------------------------------------------------------------------
+TREE_SHAPES: dict[str, str] = {
+    "S": r"NP VP",
+    "NP": r"NPbase( PP)*",
+    "NPbase": r"Prn|Det Nom|Pos Nom",
+    "Nom": r"Noun( AdjP)?",
+    "AdjP": r"Adj|Intens Adj",
+    "VP": r"Verb( NP)?( (PP|Adv))*",
+    "PP": r"Prep NP",
+}
+
+LABELS = {
+    "S": "oración",
+    "NP": "sintagma nominal",
+    "NPbase": "sintagma nominal sin complementos",
+    "Nom": "núcleo nominal (sustantivo y adjetivo)",
+    "AdjP": "sintagma adjetival",
+    "VP": "sintagma verbal",
+    "PP": "sintagma preposicional",
+    "Prn": "pronombre",
+    "Det": "determinante",
+    "Pos": "posesivo",
+    "Noun": "sustantivo",
+    "Adj": "adjetivo",
+    "Intens": "intensificador",
+    "Adv": "adverbio",
+    "Verb": "verbo",
+    "Prep": "preposición",
+}
 
 
 # ----------------------------------------------------------------------
 # Helpers (implemented)
 # ----------------------------------------------------------------------
-def nonterminals() -> list[str]:
+def nonterminals(productions: list[Production] = PARSER_PRODUCTIONS) -> list[str]:
     """Non-terminals in order of first appearance (START first)."""
     seen: list[str] = []
-    for p in PRODUCTIONS:
+    for p in productions:
         if p.left not in seen:
             seen.append(p.left)
     return seen
 
 
-def productions_of(left: str) -> list[Production]:
-    return [p for p in PRODUCTIONS if p.left == left]
+def as_bnf(productions: list[Production] = PARSER_PRODUCTIONS) -> str:
+    """The grammar as text, one line per non-terminal, as in the document:
 
-
-def as_bnf(with_labels: bool = True) -> str:
-    """The grammar as text, one line per non-terminal:
-
-        O    ::= SN SV
-        SN   ::= DET SUST | DET SUST SA | NPROP | PRON
+        S       → NP VP
+        NP      → NPbase NP'
+        NPbase  → Prn | Det Nom | Pos Nom
         ...
 
-    Used in docs and in the LLM prompt (P5).
+    Used in the LLM prompt (P5) and to compare with the document.
     """
-    names = nonterminals()
-    width = max(len(n) for n in names)
+    names = nonterminals(productions)
+    width = max(len(n) for n in names) + 1   # same alignment as the document
     lines = []
     for left in names:
-        alternatives = " | ".join(" ".join(p.right) for p in productions_of(left))
-        lines.append(f"{left:<{width}} ::= {alternatives}")
-    if with_labels:
-        used = set(names) | {s for p in PRODUCTIONS for s in p.right}
-        shown = [s for s in LABELS if s in used]
-        label_width = max(len(s) for s in shown)
-        lines.append("")
-        lines.append("Categorías:")
-        for symbol in shown:
-            lines.append(f"  {symbol:<{label_width}} = {LABELS[symbol]}")
+        alternatives = " | ".join(
+            " ".join(p.right) or EPSILON for p in productions if p.left == left
+        )
+        lines.append(f"{left:<{width}} → {alternatives}")
     return "\n".join(lines)
 
 
-def check_grammar() -> list[str]:
+def check_grammar(productions: list[Production] = PARSER_PRODUCTIONS, allow_left_recursion: bool = False) -> list[str]:
     """Problems that make the grammar unusable (empty list = OK).
 
     - every symbol on the right must be a non-terminal or a terminal;
     - every non-terminal must be reachable from START;
-    - no direct left recursion (A → A ...), which a recursive-descent parser
-      cannot handle.
+    - no direct left recursion (A → A ...), unless allowed (report version).
     """
     problems = []
-    names = set(nonterminals())
+    names = set(nonterminals(productions))
     if START not in names:
         problems.append(f"no hay producciones para el símbolo inicial {START}")
-    for p in PRODUCTIONS:
+    for p in productions:
         for symbol in p.right:
             if symbol not in names and symbol not in TERMINALS:
                 problems.append(f"{p}: el símbolo {symbol} no está definido")
-        if p.right and p.right[0] == p.left:
+        if not allow_left_recursion and p.right and p.right[0] == p.left:
             problems.append(f"{p}: recursión por la izquierda")
 
     reachable = {START}
     changed = True
     while changed:
         changed = False
-        for p in PRODUCTIONS:
+        for p in productions:
             if p.left in reachable:
                 for symbol in p.right:
                     if symbol in names and symbol not in reachable:
@@ -171,4 +192,27 @@ def check_grammar() -> list[str]:
                         changed = True
     for name in sorted(names - reachable):
         problems.append(f"{name} no se puede alcanzar desde {START}")
+    return problems
+
+
+def tree_shape_errors(tree) -> list[str]:
+    """Nodes of a tree that do not follow TREE_SHAPES (empty list = valid tree).
+
+    Works with any spanish.tree.Node, including trees parsed from the LLM
+    answers, so P4/P5 can measure how many LLM trees respect the grammar.
+    """
+    problems = []
+    if tree.label != START:
+        problems.append(f"la raíz es {tree.label}, no {START}")
+    for node in tree.walk():
+        if node.is_leaf:
+            if node.label not in TERMINALS:
+                problems.append(f"({node.label} {node.word}): categoría desconocida")
+            continue
+        shape = TREE_SHAPES.get(node.label)
+        children = " ".join(child.label for child in node.children)
+        if shape is None:
+            problems.append(f"{node.label}: etiqueta de sintagma desconocida")
+        elif not re.fullmatch(shape, children):
+            problems.append(f"{node.label} → {children}: no está permitido")
     return problems

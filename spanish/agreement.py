@@ -1,26 +1,49 @@
-"""Agreement checker.  Owner: Person 3 (the Phase 2 version of semantic.py).
+"""Agreement checker.  Owner: Person 3 (the Phase 2 version of semantico.py).
 
 Input:  the tree built by the parser (leaves carry their Reading).
 Output: list of AgreementError (empty = the sentence agrees).
 
-What a CFG cannot express without multiplying its rules (see the Phase 1
-reflection, fase1/README.md): features that must match between words.
+Rules (docs/gramatica_es.md, 1.3), checked on EVERY NPbase of the tree
+(subject, object and the NPs inside PPs):
 
-Checks:
-  1. Inside each SN: DET, SUST and every ADJ of its SA agree in gender and number.
-       "el gato negro" ✓   "la gato negro" ✗ (género)   "el gatos" ✗ (número)
-  2. Subject-verb: the SN that is the subject of O agrees with the V of SV
-     in number and person.
-       "los niños corren" ✓   "los niños corre" ✗ (número)
-     Nouns and proper names are 3rd person; pronouns carry their own person.
+  1. Inside the NP: Det/Pos, Noun and Adj agree in gender and number.
+       "los perros rojos" ✔   "la elefante" ✘   "los perro" ✘
+     Possessives have no gender (su, sus): only number is checked.
+     A missing feature agrees with anything: "grande" has no gender.
+  2. Subject-verb: the head of the subject NP and the verb agree in number
+     and person.
+       "los perros comen" ✔   "los perros come" ✘
+     Nouns are 3rd person; pronouns carry their own person.
 
-Message format (Spanish), e.g.:
-  "el determinante 'la' no concuerda en género con 'gato'"
-  "el sujeto 'los niños' (plural) no concuerda con el verbo 'corre' (singular)"
+Where the pieces are in the (flattened) tree:
+  S → NP VP;  NP → NPbase PP*;  NPbase → Prn | Det Nom | Pos Nom;
+  Nom → Noun AdjP?;  AdjP → Adj | Intens Adj;  VP → Verb NP? (PP | Adv)*
+
+Message format (Spanish), reported at the word that breaks agreement:
+  "el determinante 'la' no concuerda en género con 'elefante'"
+  "el adjetivo 'grises' no concuerda en número con 'elefante'"
+  "el verbo 'come' (singular) no concuerda con el sujeto 'perros' (plural)"
 """
 
 from .errors import AgreementError
 from .tree import Node
+
+
+def subject_head(sentence: Node) -> Node | None:
+    """Leaf of the subject's head: the Prn or the Noun of S → NP → NPbase."""
+    np = sentence.child("NP")
+    base = np.child("NPbase") if np else None
+    if base is None:
+        return None
+    if base.child("Prn"):
+        return base.child("Prn")
+    nom = base.child("Nom")
+    return nom.child("Noun") if nom else None
+
+
+def main_verb(sentence: Node) -> Node | None:
+    vp = sentence.child("VP")
+    return vp.child("Verb") if vp else None
 
 
 class AgreementChecker:
@@ -28,26 +51,25 @@ class AgreementChecker:
         self.errors: list[AgreementError] = []
 
     def error(self, message: str, leaf: Node) -> None:
-        """Report at the word that breaks agreement (usually the later one)."""
         position = leaf.token.position if leaf.token else None
         self.errors.append(AgreementError(position, leaf.word, message))
 
     def check(self, tree: Node) -> list[AgreementError]:
-        for noun_phrase in tree.find_all("SN"):
-            self.check_noun_phrase(noun_phrase)
+        for base in tree.find_all("NPbase"):
+            self.check_noun_phrase(base)
         self.check_subject_verb(tree)
         return self.errors
 
-    def check_noun_phrase(self, sn: Node) -> None:
-        # TODO(P3): take the DET, SUST and the ADJ inside its SA (sn.child("SA")),
-        #           compare leaf.reading.features.gender / .number.
-        #           Skip the SN → NPROP / PRON cases (nothing to compare).
+    def check_noun_phrase(self, base: Node) -> None:
+        # TODO(P3): skip NPbase → Prn. Otherwise compare with the Noun of Nom:
+        #   - the Det (gender and number) or the Pos (number only),
+        #   - the Adj inside Nom's AdjP, if any (gender and number).
+        #   Use leaf.reading.features.gender / .number; None agrees with anything.
         raise NotImplementedError("TODO(P3): check_noun_phrase")
 
     def check_subject_verb(self, sentence: Node) -> None:
-        # TODO(P3): subject = sentence.child("SN"), verb = the V of sentence.child("SV").
-        #           Number: from SUST / PRON (NPROP: sg).
-        #           Person: PRON has it; SUST and NPROP are 3rd person.
+        # TODO(P3): head = subject_head(sentence), verb = main_verb(sentence).
+        #   Number from the head; person: Prn has it, Noun is 3rd person.
         raise NotImplementedError("TODO(P3): check_subject_verb")
 
 

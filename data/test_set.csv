@@ -1,0 +1,9 @@
+id,nivel,oracion,en_gramatica,espanol_valido,tipo_error,fenomeno,etiquetas,sujeto,verbo,objeto
+1,1,Ella come una manzana.,si,si,ninguno,svo,ella/Prn come/Verb una/Det manzana/Noun,ella,come,manzana
+2,2,Los perros grandes durmieron.,si,si,ninguno,adjetivo;intransitivo;preterito,los/Det perros/Noun grandes/Adj durmieron/Verb,perros,durmieron,
+3,2,Él mató un elefante muy gris ayer.,si,si,ninguno,intensificador;adverbio;preterito,él/Prn mató/Verb un/Det elefante/Noun muy/Intens gris/Adj ayer/Adv,él,mató,elefante
+4,3,Él mató un elefante en sus pijamas.,si,si,ninguno,ambiguedad;pp,él/Prn mató/Verb un/Det elefante/Noun en/Prep sus/Pos pijamas/Noun,él,mató,elefante
+5,2,La elefante grises duerme.,no,no,concordancia,concordancia_np,la/Det elefante/Noun grises/Adj duerme/Verb,elefante,duerme,
+6,2,Los perros come.,no,no,concordancia,concordancia_sv,los/Det perros/Noun come/Verb,perros,come,
+7,3,Come la manzana.,no,si,sintactico,sujeto_omitido,come/Verb la/Det manzana/Noun,,come,manzana
+8,2,Mi niña comió la manzana con su perro.,si,si,ninguno,posesivo;pp;preterito,mi/Pos niña/Noun comió/Verb la/Det manzana/Noun con/Prep su/Pos perro/Noun,niña,comió,manzana

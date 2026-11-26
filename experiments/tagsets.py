@@ -1,33 +1,59 @@
-"""Map other tagsets to our categories, to compare spaCy/Transformers with the parser.
+"""Conversion of spaCy and Transformers outputs to our categories.
 
-Owner: Person 1. spaCy and most HuggingFace Spanish taggers use Universal
-Dependencies POS tags (UPOS). Our categories are the ones of spanish/tokens.py.
+Executable copy of docs/gramatica_es.md, section 2.5 ("the conversion table
+the notebooks must use, so nobody invents their own"). Owner: Person 1.
 
-PROPOSAL: check the cases marked TODO with real outputs.
+Both tools give Universal Dependencies UPOS tags; our categories are the ones
+of section 2.2.
 """
 
-UPOS_TO_OURS: dict[str, str] = {
-    "DET": "DET",
-    "NOUN": "SUST",
-    "PROPN": "NPROP",
-    "PRON": "PRON",
-    "ADJ": "ADJ",
-    "VERB": "V",
-    "AUX": "V",       # TODO(P1): "ha comido" / "es": ¿entra en la gramática?
-    "ADV": "ADV",
-    "ADP": "PREP",
-    "CCONJ": "CONJ",
-    "SCONJ": "CONJ",
-    "PUNCT": None,    # punctuation is dropped
-    "NUM": "DET",     # TODO(P1): "dos gatos": the grammar has no numerals
-}
+CONVERSION = {"PRON": "Prn", "NOUN": "Noun", "PROPN": "Noun", "ADJ": "Adj",
+              "VERB": "Verb", "AUX": "Verb", "ADP": "Prep"}
 
-# Morphological features (spaCy token.morph / UD feats) -> our values.
-UD_GENDER = {"Masc": "masc", "Fem": "fem"}
-UD_NUMBER = {"Sing": "sg", "Plur": "pl"}
-UD_TENSE = {"Pres": "presente", "Past": "preterito"}   # TODO(P1): Imp (imperfecto) -> ?
+# Fallback when a model gives no features or dependencies (section 2.5).
+POSSESSIVES = {"su", "sus", "mi", "mis", "tu", "tus"}
+INTENSIFIERS = {"muy", "bastante", "poco", "tan"}
 
 
-def upos_to_ours(tag: str) -> str | None:
-    """None means: drop the word (punctuation). Unknown tags come back as 'OTRO'."""
-    return UPOS_TO_OURS.get(tag, "OTRO")
+# ----------------------------------------------------------------------
+# spaCy (has morphology and dependencies)
+# ----------------------------------------------------------------------
+def spacy_category(token) -> str:
+    """Our category for a spaCy token (section 2.5)."""
+    if token.pos_ == "DET":
+        return "Pos" if "Yes" in token.morph.get("Poss") else "Det"
+    if token.pos_ == "ADV":
+        before_the_adj = token.head.pos_ == "ADJ" and token.i == token.head.i - 1
+        return "Intens" if before_the_adj else "Adv"
+    return CONVERSION.get(token.pos_, "X")
+
+
+def spacy_output(id_: int, doc, time_ms: float) -> dict:
+    """One line of results/spacy.jsonl (section 2.5)."""
+    tokens = [t for t in doc if t.pos_ != "PUNCT"]
+    root = next((t for t in doc if t.dep_ == "ROOT"), None)
+
+    def role(dep: str) -> str:
+        return next((t.text.lower() for t in doc if t.dep_ == dep and t.head == root), "")
+
+    return {
+        "id": id_, "sistema": "spacy", "acepta": None, "tipo_error": None,
+        "etiquetas": [[t.text.lower(), spacy_category(t)] for t in tokens],
+        "sujeto": role("nsubj"), "verbo": root.text.lower() if root else "",
+        "objeto": role("obj"), "arbol": None, "num_arboles": None,
+        "tiempo_ms": time_ms, "error_ejecucion": None,
+    }
+
+
+# ----------------------------------------------------------------------
+# Transformers (usually POS tags only: no features, no dependencies)
+# ----------------------------------------------------------------------
+def upos_category(upos: str, word: str) -> str | None:
+    """Our category from a bare UPOS tag and the word. None = drop it (punctuation)."""
+    if upos == "PUNCT":
+        return None
+    if upos == "DET":
+        return "Pos" if word.lower() in POSSESSIVES else "Det"
+    if upos == "ADV":
+        return "Intens" if word.lower() in INTENSIFIERS else "Adv"
+    return CONVERSION.get(upos, "X")

@@ -3,17 +3,20 @@
 Phases do NOT stop at the first error: they collect every diagnostic.
 
 Single format (in Spanish, like all the output):
-    "Palabra 2 ('gatos'): el determinante 'el' no concuerda en número con 'gatos'"
+    "Palabra 2 ('elefante'): el determinante 'la' no concuerda en género con 'elefante'"
     "Oración: falta el verbo"                       (when no single word is to blame)
 
 Hierarchy:
     Diagnostic
-    ├── LexicalError     unknown word                     error_type "lexico"
-    ├── ParseError       structure not in the grammar      error_type "sintactico"
-    └── AgreementError   gender/number/person mismatch     error_type "concordancia"
+    ├── LexicalError     invalid character ("#", "3")          tipo_error "sintactico"
+    ├── ParseError       structure or word outside the grammar  tipo_error "sintactico"
+    └── AgreementError   gender/number/person mismatch          tipo_error "concordancia"
 
 `error_type` is the value written in the "tipo_error" field of the results
-(see docs/formato_salida.md), so metrics can classify errors.
+(docs/gramatica_es.md, 2.4). The agreed format has only two error types, so a
+lexical error also counts as "sintactico": the sentence cannot be derived.
+Unknown words are not lexical errors: they are tagged X and the parser
+rejects them.
 """
 
 from collections.abc import Iterable
@@ -28,7 +31,7 @@ class Diagnostic:
     message: str            # just the cause, in Spanish
 
     kind: ClassVar[str] = "diagnóstico"
-    error_type: ClassVar[str] = "otro"
+    error_type: ClassVar[str] = "sintactico"
 
     def __str__(self) -> str:
         if self.position is None:
@@ -36,14 +39,14 @@ class Diagnostic:
         return f"Palabra {self.position} ('{self.word}'): {self.message}"
 
     def labeled(self) -> str:
-        """"[concordancia] Palabra 2 ('gatos'): ..." for mixed lists."""
+        """"[error de concordancia] Palabra 2 ('elefante'): ..." for mixed lists."""
         return f"[{self.kind}] {self}"
 
 
 @dataclass(frozen=True)
 class LexicalError(Diagnostic):
     kind: ClassVar[str] = "error léxico"
-    error_type: ClassVar[str] = "lexico"
+    error_type: ClassVar[str] = "sintactico"
 
 
 @dataclass(frozen=True)
@@ -60,8 +63,8 @@ class AgreementError(Diagnostic):
     error_type: ClassVar[str] = "concordancia"
 
 
-# Values allowed in "tipo_error" (results and test set).
-ERROR_TYPES = {"lexico", "sintactico", "concordancia", "otro"}
+# Values allowed in "tipo_error" of the results (null when accepted or undecided).
+ERROR_TYPES = ("sintactico", "concordancia")
 
 
 def sort_by_position(diagnostics: Iterable[Diagnostic]) -> list[Diagnostic]:
