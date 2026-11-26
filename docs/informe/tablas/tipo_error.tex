@@ -1,0 +1,14 @@
+\begin{tabular}{lrrrrrr}
+\toprule
+Sistema & Esperado & acepta & sintactico & concordancia & sin tipo & sin decision \\
+\midrule
+Parser propio & sintactico & 0 & 15 & 0 & 0 & 0 \\
+Parser propio & concordancia & 0 & 0 & 13 & 0 & 0 \\
+Transformers & sintactico & 10 & 0 & 0 & 5 & 0 \\
+Transformers & concordancia & 1 & 0 & 0 & 12 & 0 \\
+LLM zero-shot & sintactico & 0 & 14 & 1 & 0 & 0 \\
+LLM zero-shot & concordancia & 0 & 0 & 13 & 0 & 0 \\
+LLM few-shot & sintactico & 1 & 14 & 0 & 0 & 0 \\
+LLM few-shot & concordancia & 0 & 0 & 13 & 0 & 0 \\
+\bottomrule
+\end{tabular}

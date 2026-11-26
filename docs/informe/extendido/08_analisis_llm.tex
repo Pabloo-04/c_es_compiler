@@ -1,0 +1,118 @@
+% Responsable: P5
+% Datos: notebooks/llm_experiment.ipynb y results/logs/llm.jsonl (tablas en results/reports/llm_*.csv).
+\section{Experimento con el LLM}
+\label{sec:analisis_llm}
+
+\subsection{Diseño}
+
+Le dimos a un LLM las reglas de nuestra gramática y le pedimos que analizara cada oración del
+conjunto de prueba siguiéndolas al pie de la letra. El prompt
+(\texttt{experiments/prompts.py}) contiene:
+\begin{itemize}
+  \item la instrucción de usar \emph{exclusivamente} la gramática y el léxico dados, ``aunque
+    conozcas otras construcciones válidas del español'';
+  \item cuándo se acepta una oración y cuándo el error es sintáctico o de concordancia;
+  \item la gramática sin recursión por la izquierda (sección~\ref{sec:gramatica}), el léxico
+    completo y las formas de árbol permitidas;
+  \item el formato de respuesta: solo un objeto JSON con la decisión, el tipo de error, las
+    etiquetas, el sujeto, el verbo, el objeto, la unión de la frase preposicional (que puede ser
+    \texttt{ambigua}) y el árbol.
+\end{itemize}
+Hay dos versiones: \textbf{\emph{zero-shot}}, solo con lo anterior (unos 1\,150 tokens), y
+\textbf{\emph{few-shot}}, que agrega cinco ejemplos resueltos que no están en el conjunto de
+prueba (\emph{Ella duerme}, \emph{La niña pequeña come una manzana roja}, \emph{*Los perro
+duerme}, \emph{*Duerme el perro} y \emph{La niña duerme con su perro}; unos 1\,750 tokens).
+
+Usamos \texttt{gemini-3.5-flash-lite} con temperatura 0, el 26 de noviembre de 2026, en la capa
+gratuita de la API. Primero intentamos con \texttt{gemini-3.8-flash}, pero su capa gratuita
+permite solo 20 llamadas al día y el experimento necesita 146. Cada prompt y su respuesta cruda
+se guardan en \texttt{results/logs/llm.jsonl}; una respuesta que ya está en el log se reutiliza
+sin volver a llamar a la API, lo que hace el experimento reproducible aunque el modelo no sea
+determinista.
+
+\subsection{¿Respeta las reglas o se desvía hacia el español?}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lrr}
+    \toprule
+    & \emph{Zero-shot} & \emph{Few-shot} \\
+    \midrule
+    Respuestas con JSON válido & 73 / 73 & 73 / 73 \\
+    Exactitud contra \texttt{en\_gramatica} (las reglas) & 0.973 & 0.986 \\
+    Exactitud contra \texttt{espanol\_valido} (el español) & 0.822 & 0.863 \\
+    Acepta español correcto que la gramática no genera & 0 / 11 & 1 / 11 \\
+    Acepta español incorrecto & 0 / 17 & 0 / 17 \\
+    Tipo de error correcto (rechazos) & 0.964 & 1.000 \\
+    Árboles con las formas de la gramática & 0.667 & 0.957 \\
+    Árboles iguales al del parser & 0.488 & 0.822 \\
+    Etiquetado & 0.992 & 0.992 \\
+    Unión de la frase preposicional & 15 / 17 & 14 / 17 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Resultados del LLM. Los árboles se evalúan sobre las oraciones que acepta.}
+  \label{tab:llm_resumen}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada[0.8\linewidth]{llm_reglas_vs_espanol}
+  \caption{Exactitud de la aceptación contra las reglas y contra el español.}
+  \label{fig:llm_reglas_vs_espanol}
+\end{figure}
+
+\textbf{Sigue las reglas.} Su exactitud contra las reglas es mucho mayor que contra el español
+(figura~\ref{fig:llm_reglas_vs_espanol}), el patrón contrario al de Transformers. En
+\emph{zero-shot} rechaza las 11 oraciones correctas que la gramática no genera, incluidas
+\emph{El perro y el gato duermen} y \emph{La niña que lee un libro come}, que sin duda reconoce
+como español válido. También rechaza las 13 oraciones con error de concordancia y casi siempre
+dice bien por qué. Con la gramática en el prompt, el modelo se comporta como un verificador de
+reglas y no como un hablante.
+
+\textbf{Pero cuando fuerza una regla, la aplica mal.} La única desviación del \emph{few-shot} es
+la más ilustrativa. Acepta \emph{Leímos un libro}, que no tiene sujeto, con este árbol:
+\begin{lstlisting}
+(S (NP (NPbase (Det un) (Nom (Noun libro)))) (VP (Verb leímos)))
+\end{lstlisting}
+Para que la oración encaje en $S \to NP\ VP$, convierte el objeto en sujeto y cambia el orden
+de las palabras, sin revisar que \emph{un libro} (tercera persona) no concuerda con
+\emph{leímos} (primera del plural). Dice que aplicó la gramática, pero el árbol no corresponde a
+la oración.
+
+\textbf{Sus árboles no siempre respetan el formato.} En \emph{zero-shot} solo dos de cada tres
+árboles usan nuestras formas. El error más común es omitir la categoría del pronombre:
+\texttt{(NPbase ella)} en lugar de \texttt{(NPbase (Prn ella))}. Otros omiten el nodo
+\texttt{NPbase} o no cierran bien los paréntesis. La decisión puede ser correcta aunque el árbol
+que la justifica no lo sea.
+
+\subsection{¿Dónde acierta y dónde falla?}
+
+En los niveles 1 y 2 el LLM es casi perfecto: decide bien las 20 oraciones simples en las dos
+versiones, y en las 29 intermedias falla una sola vez en \emph{zero-shot} y ninguna en
+\emph{few-shot}. Los errores están en el nivel 3 y en las frases
+preposicionales:
+\begin{itemize}
+  \item \emph{Zero-shot} rechaza dos oraciones correctas con \emph{sus pijamas}: \emph{Él mató un
+    elefante en sus pijamas} (como error sintáctico) y \emph{El perro duerme en sus pijamas}
+    (como error de concordancia, aunque \emph{sus} solo marca número y concuerda).
+  \item A \emph{Come la manzana} le asigna error de concordancia en lugar de sintáctico.
+  \item En la unión de la frase preposicional es el mejor de todos los sistemas (15 de 17 en
+    \emph{zero-shot}, frente a 13 de spaCy y 10 del parser), porque decide por el sentido:
+    \emph{comió la manzana con su perro} va al verbo y \emph{las cartas de los niños}, al
+    sustantivo. Pero no usa nunca la respuesta \texttt{ambigua}, aunque se le ofrece: en las dos
+    oraciones ambiguas elige el verbo.
+\end{itemize}
+
+\subsection{¿El \emph{few-shot} mejora?}
+
+Sí, pero sobre todo en la forma y no en la decisión. Con los cinco ejemplos, los árboles con
+nuestras formas pasan del 66.7\,\% al 95.7\,\% y los iguales al del parser del 48.8\,\% al
+82.2\,\%: los ejemplos le enseñan la notación que la descripción sola no le dejó clara. La
+decisión mejora poco (exactitud de 0.973 a 0.986 contra las reglas): recupera las dos oraciones
+con \emph{pijamas} y el tipo de error queda perfecto. A cambio aparece la desviación de
+\emph{Leímos un libro} y la unión de la frase preposicional baja de 15 a 14. Los árboles del
+\emph{few-shot} que no son iguales al del parser están dentro de la gramática: casi todos unen
+la frase preposicional al verbo (\emph{comió la manzana con su perro}), una derivación que la
+gramática también permite y que corresponde a la lectura natural, aunque no es la que elige
+nuestro parser.

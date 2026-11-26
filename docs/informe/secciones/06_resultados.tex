@@ -1,156 +1,75 @@
-% Responsable: P4
-% Tablas y figuras: python -m evaluation.metrics  (results/tablas/*.tex, results/figures/*.png).
-% \tablagenerada está definida en 05_set_de_prueba.tex.
+% Responsable: P4  (versión completa en extendido/06_resultados.tex)
 \section{Resultados}
 \label{sec:resultados}
 
-\newcommand{\figuragenerada}[2][\linewidth]{%
-  \IfFileExists{../../results/figures/#2.png}{\includegraphics[width=#1]{#2}}{%
-    \pendiente{generar results/figures/#2.png}}}
-
-\pendiente{P4: estas tablas solo tienen el parser propio. Falta volver a correr spaCy y
-Transformers (P1) con el conjunto de 73 oraciones y el LLM (P5); después se regeneran con
-python -m evaluation.metrics y se completa la discusión.}
-
-\subsection{Aceptación}
+\subsection{Aceptación y clasificación de errores}
 
 \begin{table}[h]
   \centering
   \small
-  \tablagenerada{aceptacion}\par\medskip
-  \tablagenerada{aceptacion_espanol}
-  \caption{Aceptación contra \texttt{en\_gramatica} (arriba) y contra \texttt{espanol\_valido}
-    (abajo). ``---'': la métrica no aplica al sistema.}
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lrrrrrrrr|r}
+    \toprule
+    & \multicolumn{8}{c|}{Contra \texttt{en\_gramatica} (las reglas)} & Contra el español \\
+    Sistema & VP & FP & FN & VN & Precisión & Cobertura & Rechazo & Exactitud & Exactitud \\
+    \midrule
+    Parser propio & 45 & 0 & 0 & 28 & 1.00 & 1.00 & 1.00 & 1.00 & 0.85 \\
+    Transformers (BETO) & 36 & 11 & 9 & 17 & 0.77 & 0.80 & 0.61 & 0.73 & 0.85 \\
+    LLM \emph{zero-shot} & 43 & 0 & 2 & 28 & 1.00 & 0.96 & 1.00 & 0.97 & 0.82 \\
+    LLM \emph{few-shot} & 45 & 1 & 0 & 27 & 0.98 & 1.00 & 0.96 & 0.99 & 0.86 \\
+    \bottomrule
+  \end{tabular}}
+  \caption{Aceptación de las 73 oraciones. spaCy no decide la gramaticalidad.}
   \label{tab:aceptacion}
 \end{table}
 
 \begin{figure}[h]
   \centering
-  \figuragenerada{aceptacion}
-  \caption{Métricas de aceptación contra las reglas de la gramática.}
-  \label{fig:aceptacion}
-\end{figure}
-
-El parser propio acepta exactamente las 45 oraciones de la gramática y rechaza las 28 que no
-lo están. Además, todas las rechaza por la razón esperada: 15 por error sintáctico y 13 por
-concordancia (tabla~\ref{tab:tipo_error}). Este resultado no mide qué tan bueno es el enfoque,
-porque el conjunto se etiquetó con la misma gramática que implementa el parser. Lo que muestra
-es que la implementación es fiel a la especificación, incluso en los casos difíciles: la
-concordancia a distancia (\emph{El perro de los niños come} se acepta y \emph{*...comen} se
-rechaza) y la palabra ambigua \emph{bajo}.
-
-La comparación interesante es contra \texttt{espanol\_valido}. Ahí el parser tiene precisión
-1.00, pero su cobertura baja a 0.80. Nunca acepta español incorrecto, pero rechaza 11 de las 56
-oraciones correctas: todo lo que la CFG no genera (sujeto omitido, orden libre, coordinación,
-subordinadas y palabras fuera del léxico). Ese 20\,\% es la medida concreta de cuánto español
-correcto queda fuera de la gramática.
-
-\begin{figure}[h]
-  \centering
-  \figuragenerada[0.7\linewidth]{reglas_vs_espanol}
-  \caption{Exactitud de la aceptación contra las dos referencias.}
+  \includegraphics[width=0.75\linewidth]{reglas_vs_espanol}
+  \caption{Exactitud de la aceptación contra las reglas y contra el español.}
   \label{fig:reglas_vs_espanol}
 \end{figure}
 
-\pendiente{P4 con P5: comparar con Transformers y el LLM. Si su exactitud contra
-espanol\_valido supera a la de en\_gramatica, siguen su conocimiento del español y no las reglas.}
+El parser acepta las 45 oraciones de la gramática, rechaza las 28 restantes y da el tipo de
+error correcto en todas (15 sintácticas y 13 de concordancia). Esto muestra que la
+implementación es fiel a la especificación. Contra el español su exactitud baja a 0.85: nunca
+acepta español incorrecto, pero rechaza las 11 oraciones correctas fuera de la gramática.
+
+Los otros dos sistemas que deciden se comportan de forma opuesta (figura~\ref{fig:reglas_vs_espanol}).
+Transformers sigue el español: tiene 11 falsos positivos, 10 de ellos oraciones correctas fuera
+de la gramática, y 9 falsos negativos, oraciones correctas que rechaza por tener palabras poco
+frecuentes. El LLM sigue las reglas: 2 errores en \emph{zero-shot} y 1 en \emph{few-shot}, y da
+el tipo de error correcto en el 96\,\% y el 100\,\% de sus rechazos.
+
+\subsection{Etiquetado, funciones y frase preposicional}
 
 \begin{table}[h]
   \centering
   \small
-  \resizebox{\linewidth}{!}{\tablagenerada{tipo_error}}
-  \caption{Tipo de error esperado frente a la respuesta del sistema, en las 28 oraciones fuera
-    de la gramática.}
-  \label{tab:tipo_error}
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lrrrrrr}
+    \toprule
+    Sistema & Palabras mal etiquetadas & Etiquetado & Sujeto & Verbo & Objeto & Unión de la PP \\
+    \midrule
+    Parser propio & 0 / 304 & 1.00 & 1.00 & 1.00 & 1.00 & 10 / 17 \\
+    spaCy & 22 / 381 & 0.94 & 0.88 & 0.86 & 0.92 & 13 / 17 \\
+    Transformers (XLM-R) & 6 / 381 & 0.98 & --- & --- & --- & --- \\
+    LLM \emph{zero-shot} & 3 / 381 & 0.99 & 0.93 & 0.93 & 0.99 & 15 / 17 \\
+    LLM \emph{few-shot} & 3 / 381 & 0.99 & 0.97 & 0.96 & 1.00 & 14 / 17 \\
+    \bottomrule
+  \end{tabular}}
+  \caption{Errores de etiquetado y exactitud del análisis. El parser solo analiza las 58
+    oraciones que puede derivar (304 palabras).}
+  \label{tab:analisis}
 \end{table}
 
-\subsection{Resultados por nivel}
+El parser no se equivoca en ninguna palabra, pero solo produce análisis para 58 de las 73
+oraciones. Los demás sistemas analizan las 73; el más exacto es el LLM, y el que más falla es
+spaCy, sobre todo en verbos de oraciones cortas (\emph{El perro come}). En la unión de la frase
+preposicional el parser es el peor (10 de 17): su regla fija falla cada vez que un hablante une
+la frase al verbo y hay un objeto (\emph{Mi niña comió la manzana con su perro}). spaCy y el LLM
+deciden por el sentido y aciertan más. Ningún sistema reconoce las 2 oraciones ambiguas: todos
+eligen una lectura sin avisar.
 
-\begin{table}[h]
-  \centering
-  \small
-  \tablagenerada{exactitud_aceptacion_por_nivel}\par\medskip
-  \tablagenerada{etiquetado_por_nivel}
-  \caption{Exactitud de la aceptación (arriba) y del etiquetado (abajo) por nivel.}
-  \label{tab:por_nivel}
-\end{table}
-
-\begin{figure}[h]
-  \centering
-  \figuragenerada{por_nivel}
-  \caption{Exactitud por nivel de complejidad.}
-  \label{fig:por_nivel}
-\end{figure}
-
-\pendiente{P4: describir cómo cambia cada sistema del nivel 1 al 3.}
-
-\subsection{Etiquetado y funciones sintácticas}
-
-\begin{table}[h]
-  \centering
-  \small
-  \tablagenerada{etiquetado}\quad\tablagenerada{funciones}
-  \caption{Exactitud del etiquetado (y oraciones con otro número de palabras), y de las
-    funciones sintácticas.}
-  \label{tab:etiquetado}
-\end{table}
-
-\begin{table}[h]
-  \centering
-  \small
-  \tablagenerada{etiquetado_categoria}
-  \caption{Cobertura (\emph{recall}) del etiquetado por categoría.}
-  \label{tab:etiquetado_categoria}
-\end{table}
-
-\begin{figure}[h]
-  \centering
-  \figuragenerada[0.8\linewidth]{etiquetado_categoria}
-  \caption{Cobertura del etiquetado por categoría.}
-  \label{fig:etiquetado_categoria}
-\end{figure}
-
-El parser etiqueta sin errores, y da bien el sujeto, el verbo y el objeto, en todas las
-oraciones que puede derivar (58 de 73: las aceptadas y las que fallan solo en la
-concordancia). En las otras 15 no produce etiquetas. Un etiquetador estadístico sí puede
-analizarlas, y esa diferencia de cobertura es la que se discute en la
-sección~\ref{sec:comparacion_nlp}.
-
-\subsection{Unión de la frase preposicional}
-
-\begin{table}[h]
-  \centering
-  \small
-  \tablagenerada{pp_adjunta}\par\medskip
-  \tablagenerada{pp_confusion}
-  \caption{Unión de la primera frase preposicional en las 17 oraciones que la tienen.}
-  \label{tab:pp}
-\end{table}
-
-\begin{figure}[h]
-  \centering
-  \figuragenerada{funciones_pp}
-  \caption{Funciones sintácticas y unión de la frase preposicional.}
-  \label{fig:funciones_pp}
-\end{figure}
-
-Aquí aparece el costo del conflicto LL(1) de la sección~\ref{sec:gramatica}. El parser une la
-frase preposicional al sustantivo más cercano siempre que hay un objeto. Por eso acierta en
-las 6 oraciones donde la unión correcta es al sustantivo, y falla en las 4 donde un hablante la
-une al verbo (\emph{Ellos ven los árboles altos desde la casa}). Las 2 oraciones ambiguas las
-resuelve sin avisar, como si no lo fueran, así que detecta 0 de 2 ambigüedades. Su exactitud es
-0.59 (10 de 17). Una de las fallas es \emph{El perro corre en el parque}, que no se puede
-derivar porque \emph{corre} no está en el léxico.
-
-\subsection{Costo}
-
-\begin{table}[h]
-  \centering
-  \small
-  \tablagenerada{costo}
-  \caption{Tiempo medio por oración y fallos de ejecución.}
-  \label{tab:costo}
-\end{table}
-
-\pendiente{P4: comparar el tiempo del parser (centésimas de milisegundo por oración) con el de
-spaCy, Transformers y el LLM cuando estén sus resultados.}
+Por nivel, el parser se mantiene en 1.00 contra las reglas; el LLM baja a 0.96 en el nivel 3
+y Transformers cae de 0.75 en el nivel 1 a 0.54 en el nivel 3.

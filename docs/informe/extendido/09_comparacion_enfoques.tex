@@ -1,0 +1,59 @@
+% Responsable: P5
+\section{Comparación de enfoques}
+\label{sec:comparacion_enfoques}
+
+Los tres enfoques responden preguntas distintas. La CFG pregunta si la oración se puede derivar
+con estas reglas; los modelos estadísticos (spaCy, Transformers), cuál es el análisis más
+probable; y el LLM, qué respondería alguien a quien le dieron las reglas. La
+tabla~\ref{tab:enfoques} resume cómo se comportó cada uno en el conjunto de prueba.
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{p{0.2\linewidth}p{0.22\linewidth}p{0.24\linewidth}p{0.24\linewidth}}
+    \toprule
+    & CFG con rasgos & spaCy y Transformers & LLM con las reglas \\
+    \midrule
+    Decide la gramaticalidad & sí, exacto según las reglas & no (spaCy); según el español y la frecuencia (BETO) & sí, casi siempre según las reglas \\
+    Dice por qué rechaza & sí, con la palabra y el rasgo & no & sí, aunque a veces se equivoca \\
+    Fuera de la gramática & rechaza sin análisis & analiza casi todo & rechaza, pero etiqueta \\
+    Concordancia & la detecta siempre & no la detecta & la detecta \\
+    Ambigüedad & un solo árbol, por regla fija & un solo análisis, por probabilidad & un solo análisis; nunca dice \texttt{ambigua} \\
+    Árboles & siempre válidos & otro formato (dependencias) & a veces fuera de la gramática \\
+    Cómo se amplía & escribir reglas y palabras & reentrenar con un corpus anotado & cambiar el prompt \\
+    \bottomrule
+  \end{tabular}
+  \caption{Comparación de los tres enfoques.}
+  \label{tab:enfoques}
+\end{table}
+
+\paragraph{Robustez.} La CFG es frágil fuera de su fragmento. Una sola palabra fuera del léxico
+(\emph{corre}) o una construcción sin regla (sujeto omitido, coordinación, subordinadas) hace que
+rechace la oración sin dar ningún análisis. spaCy y Transformers degradan de forma gradual:
+etiquetan cualquier oración, aunque se equivoquen más en las inusuales (\emph{*Perro el come}).
+El LLM está en medio: con las reglas en el prompt rechaza lo que no se deriva, pero sigue
+etiquetando bien todas las palabras, porque conoce el español.
+
+\paragraph{Ambigüedad.} Ningún enfoque la maneja bien en la práctica. Nuestra CFG la detecta en
+teoría (\emph{Él mató un elefante en sus pijamas} tiene dos árboles), pero el parser
+descendente devuelve uno solo por una regla fija, que acierta 10 de 17 uniones de frases
+preposicionales. Los modelos estadísticos eligen la lectura más probable y aciertan más (13 de
+17 spaCy, 15 de 17 el LLM), pero tampoco avisan que hay otra. Para mostrar todas las lecturas
+habría que usar un parser de gráfico sobre la gramática, que devuelve todos los árboles, y
+elegir entre ellos con información de sentido, que es justo lo que la gramática no tiene.
+
+\paragraph{Escalabilidad.} Ampliar la CFG es caro y lo hace una persona. Cada construcción nueva
+necesita reglas, y cada regla puede crear conflictos nuevos: la palabra \emph{bajo} ya rompe el
+análisis sin retroceso (sección~\ref{sec:parser}), y la coordinación o las subordinadas harían la
+gramática mucho más ambigua. Escribir la concordancia dentro de la gramática multiplicaría las
+reglas, por eso la verificamos aparte. Ampliar un modelo estadístico requiere un corpus anotado y
+reentrenarlo, pero su cobertura ya es amplia. Ampliar el experimento con el LLM es lo más barato,
+porque basta con cambiar el prompt, pero no da garantías: el modelo puede ignorar o aplicar mal
+una regla nueva, como pasó con \emph{Leímos un libro}.
+
+\paragraph{Recursos.} El parser es código Python y un léxico de 14~KB, y no depende de nada
+externo. spaCy usa un modelo de 16~MB. Transformers necesita unos 1.5~GB para los dos modelos
+y una biblioteca de aprendizaje profundo. El LLM no ocupa espacio local, pero depende de un
+servicio externo: durante el experimento hubo errores por saturación del servicio y un límite
+diario de llamadas que nos obligó a cambiar de modelo, y sus respuestas solo se pueden repetir
+gracias al log.

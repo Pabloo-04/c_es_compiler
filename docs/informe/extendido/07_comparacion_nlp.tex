@@ -1,0 +1,155 @@
+% Responsable: P1
+% Datos: notebooks/nlp_comparison.ipynb (tablas en results/reports/, figuras en results/figures/).
+\section{Comparación con herramientas de NLP}
+\label{sec:comparacion_nlp}
+
+\subsection{Montaje del experimento}
+
+Procesamos las 73 oraciones con dos herramientas para español (el código está en el notebook
+\texttt{nlp\_comparison.ipynb}):
+\begin{itemize}
+  \item \textbf{spaCy}~\cite{spacy} con su modelo pequeño \texttt{es\_core\_news\_sm}. Da para
+    cada palabra una categoría UPOS de Universal Dependencies~\cite{ud} y un árbol de
+    dependencias, del que sacamos el sujeto (\texttt{nsubj}), el objeto (\texttt{obj}) y la
+    unión de la frase preposicional (\texttt{obl} al verbo, \texttt{nmod} al sustantivo).
+  \item \textbf{Transformers.} Dos modelos de clasificación de palabras que también dan UPOS:
+    XLM-RoBERTa ajustado con Universal Dependencies~\cite{xlmr, devries}, que es el oficial, y
+    un BETO~\cite{beto} ajustado para 16 categorías, como segunda referencia.
+\end{itemize}
+Las categorías UPOS se convierten a las nuestras con una tabla fija (\texttt{PRON}$\to$\textit{Prn},
+\texttt{DET} posesivo$\to$\textit{Pos}, \texttt{ADV} \emph{muy}$\to$\textit{Intens}…).
+
+Un etiquetador no decide si una oración es gramatical. Para que Transformers sí tome esa decisión
+usamos un modelo de lenguaje, BETO, sin entrenar nada: puntuamos cada oración con su
+pseudo-log-verosimilitud~\cite{salazar, kauf}, que mide qué tan probable es cada palabra dado el
+resto de la oración, y aceptamos las que superan un umbral. El umbral (\(-3.88\)) se calibró con
+12 pares mínimos que no están en el conjunto de prueba, como \emph{El perro duerme} frente a
+\emph{*El perro duermen}.
+
+\subsection{Etiquetado}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lrrr}
+    \toprule
+    Etiquetador & Palabras correctas (de 381) & Exactitud & F1 macro \\
+    \midrule
+    spaCy \texttt{es\_core\_news\_sm} & 359 & 0.942 & 0.898 \\
+    XLM-R (Transformers, oficial) & 375 & 0.984 & 0.952 \\
+    BETO-POS (Transformers) & 376 & 0.987 & 0.970 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Etiquetado de las 73 oraciones con las herramientas de NLP.}
+  \label{tab:etiquetadores}
+\end{table}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada[0.48\linewidth]{spacy_matriz_confusion}\hfill
+  \figuragenerada[0.48\linewidth]{transformers_xlmr_ud28_matriz_confusion}
+  \caption{Matrices de confusión del etiquetado: spaCy (izquierda) y XLM-R (derecha).}
+  \label{fig:matrices_nlp}
+\end{figure}
+
+Los dos modelos de Transformers etiquetan mejor que spaCy, y sus errores son de otro tipo
+(figura~\ref{fig:matrices_nlp}). De los 22 errores de spaCy, 14 son verbos etiquetados como
+sustantivo, adjetivo o determinante, casi todos en oraciones cortas: \emph{El perro come},
+\emph{El profesor lee}, \emph{Tú compras las manzanas}. Con solo sujeto y verbo, al modelo
+pequeño le falta contexto. XLM-R acierta las 45 oraciones de la gramática; sus pocos errores
+están en oraciones raras, como \emph{Come la manzana} (toma \emph{Come} como preposición) y
+\emph{*Perro el come}. BETO-POS confunde \emph{Él} con un nombre propio por la mayúscula.
+
+\subsection{Por tipo de oración}
+
+La figura~\ref{fig:comparacion_cfg_grupos} y la tabla~\ref{tab:grupos_nlp} separan las
+oraciones según su relación con la gramática y con el español.
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada{comparacion_cfg_grupos}
+  \caption{Proporción de oraciones de cada grupo que cada sistema acepta (izquierda) y que
+    analiza con todas las etiquetas correctas (derecha).}
+  \label{fig:comparacion_cfg_grupos}
+\end{figure}
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{lrrrr}
+    \toprule
+    & En la & Fuera, pero & Error de & Error \\
+    & gramática & español válido & concordancia & sintáctico \\
+    \midrule
+    Oraciones & 45 & 11 & 13 & 4 \\
+    \midrule
+    Acepta: parser & 45 & 0 & 0 & 0 \\
+    Acepta: Transformers (BETO) & 36 & 10 & 1 & 0 \\
+    \midrule
+    Etiquetas correctas: parser & 45 & 0 & 13 & 0 \\
+    Etiquetas correctas: spaCy & 38 & 6 & 9 & 1 \\
+    Etiquetas correctas: XLM-R & 45 & 7 & 13 & 3 \\
+    Etiquetas correctas: BETO-POS & 41 & 10 & 13 & 4 \\
+    \midrule
+    Sujeto, verbo y objeto correctos: parser & 45 & 0 & 13 & 0 \\
+    Sujeto, verbo y objeto correctos: spaCy & 40 & 6 & 9 & 3 \\
+    \bottomrule
+  \end{tabular}
+  \caption{Oraciones de cada grupo que cada sistema acepta o analiza correctamente.}
+  \label{tab:grupos_nlp}
+\end{table}
+
+\paragraph{Lo que spaCy y Transformers analizan y la CFG no puede.} En las 11 oraciones
+correctas que la gramática no genera, el parser rechaza todas y no da ningún análisis. Los
+etiquetadores sí: spaCy da todas las etiquetas correctas en 6, XLM-R en 7 y BETO-POS en 10. Les
+va bien con la coordinación (\emph{El perro y el gato duermen}), con el sujeto omitido en
+pretérito (\emph{Leímos un libro}) y con verbos que no están en nuestro léxico (\emph{El perro
+corre en el parque}). Parte de sus ``errores'' en este grupo son de convención y no fallas: dan
+la categoría real de \emph{que} o \emph{no}, que el conjunto marca \texttt{X}. Descontando eso,
+XLM-R solo se equivoca de verdad en \emph{Come la manzana}. Esta cobertura es la ventaja de fondo
+de un modelo estadístico: no necesita que alguien haya escrito una regla para cada construcción.
+
+\paragraph{Lo que la CFG acierta y ellos no.} La concordancia. El parser rechaza las 13
+oraciones con error de concordancia y dice exactamente qué palabra falla. Los etiquetadores las
+etiquetan bien (XLM-R, 13 de 13), pero etiquetar no es decidir: para ellos
+\emph{*La niña comen el pan} es una oración más. Probamos si spaCy podría detectarlas comparando
+los rasgos morfológicos que él mismo asigna (género y número entre determinante, sustantivo y
+adjetivo; número entre sujeto y verbo): detecta 8 de las 13, se le escapan 5 porque etiqueta mal
+alguna palabra (por ejemplo, \emph{elefante} como nombre propio, sin rasgos) y da 2 falsas
+alarmas en oraciones correctas, como \emph{Los gatos duermen}. Dentro de su fragmento la CFG
+también analiza mejor: en las 45 oraciones de la gramática da siempre etiquetas y funciones
+correctas, mientras que spaCy falla en 7 y BETO-POS en 4.
+
+\subsection{Mismo subconjunto}
+
+Para comparar en igualdad de condiciones, tomamos las 58 oraciones que el parser puede derivar
+(304 palabras). Ahí el parser y XLM-R empatan con exactitud 1.00, BETO-POS tiene 0.987 y spaCy
+0.957. El 1.00 del parser hay que leerlo con cuidado: trabaja en un mundo cerrado, con un léxico
+escrito para estas oraciones. XLM-R llega al mismo resultado sin léxico y, además, etiqueta las
+15 oraciones restantes.
+
+\subsection{Gramaticalidad con BETO}
+
+\begin{figure}[h]
+  \centering
+  \figuragenerada[0.8\linewidth]{transformers_pll_umbral}
+  \caption{Puntuación de BETO para cada oración del conjunto de prueba frente al umbral
+    calibrado.}
+  \label{fig:pll}
+\end{figure}
+
+En los 12 pares mínimos de calibración, BETO da siempre más puntuación a la versión correcta.
+Con un umbral fijo funciona peor (figura~\ref{fig:pll}). Contra \texttt{espanol\_valido} tiene
+precisión 0.98, cobertura 0.82 y exactitud 0.85: acepta una sola oración incorrecta
+(\emph{*La niña comen el pan}) pero rechaza 10 correctas, 9 de ellas de la gramática. La causa
+es que la puntuación mezcla gramaticalidad con frecuencia: las oraciones rechazadas tienen
+palabras poco comunes (\emph{durmieron}, \emph{elefante}, \emph{pijamas}) o son muy cortas
+(\emph{Mi perro duerme}, \emph{Nosotras dormimos}). Comparar dos versiones de la misma oración
+cancela ese efecto; un umbral absoluto no. Una corrección conocida es normalizar por la
+frecuencia de cada palabra~\cite{lau}.
+
+Además, BETO sigue el español y no nuestras reglas: acepta 10 de las 11 oraciones correctas que
+la gramática no genera. Contra \texttt{en\_gramatica} su exactitud es 0.73 y su rechazo correcto
+0.61. Rechaza 12 de las 13 oraciones con error de concordancia, pero sin decir por qué, y como
+también rechaza oraciones correctas, su rechazo no permite saber si la oración tiene un error de
+concordancia o solo palabras poco frecuentes.

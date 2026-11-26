@@ -1,0 +1,144 @@
+% Responsable: P1
+\section{Diseño de la gramática}
+\label{sec:gramatica}
+
+\subsection{Producciones}
+
+Partimos de la gramática de ejemplo de Luque~\cite{luque}, que describe oraciones como
+\emph{Él mató un elefante en sus pijamas}, y le agregamos lo que pide el enunciado: estructura
+sujeto-verbo-objeto, adjetivos, adverbios, frases preposicionales y dos tiempos verbales. La
+gramática es $G = (V, \Sigma, R, S)$ con
+$V = \{S, NP, Nom, AdjP, VP, PP\}$, terminales en las categorías léxicas
+$\Sigma = \{\textit{Prn}, \textit{Det}, \textit{Pos}, \textit{Noun}, \textit{Adj},
+\textit{Intens}, \textit{Adv}, \textit{Verb}, \textit{Prep}\}$ y las producciones
+\begin{align*}
+  S    &\to NP\ VP \\
+  NP   &\to \textit{Prn} \mid \textit{Det}\ Nom \mid \textit{Pos}\ Nom \mid NP\ PP \\
+  Nom  &\to \textit{Noun} \mid \textit{Noun}\ AdjP                      && \star \\
+  AdjP &\to \textit{Adj} \mid \textit{Intens}\ \textit{Adj}             && \star \\
+  VP   &\to \textit{Verb}\ NP \mid VP\ PP \mid \textit{Verb}\ \star \mid VP\ \textit{Adv}\ \star \\
+  PP   &\to \textit{Prep}\ NP
+\end{align*}
+Las reglas marcadas con $\star$ son nuevas; las demás vienen de Luque. El único cambio a sus
+reglas es que \textit{Det Noun} y \textit{Pos Noun} pasan a ser \textit{Det Nom} y \textit{Pos
+Nom}, para que el adjetivo entre sin duplicar reglas. Las categorías léxicas se expanden en
+las palabras del léxico (sección~\ref{sec:lexer_concordancia_arboles}).
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{ll}
+    \toprule
+    Requisito del enunciado & Regla o recurso \\
+    \midrule
+    Sujeto-verbo-objeto & $S \to NP\ VP$, $VP \to \textit{Verb}\ NP$ \\
+    Adjetivos & $Nom \to \textit{Noun}\ AdjP$, $AdjP \to \textit{Adj}$ \\
+    Adverbios & $VP \to VP\ \textit{Adv}$, $AdjP \to \textit{Intens}\ \textit{Adj}$ \\
+    Frases preposicionales & $NP \to NP\ PP$, $VP \to VP\ PP$, $PP \to \textit{Prep}\ NP$ \\
+    Dos tiempos verbales & presente y pretérito, como rasgo \texttt{tiempo} del léxico \\
+    Concordancia & rasgos de género, número y persona, verificados aparte \\
+    \bottomrule
+  \end{tabular}
+  \caption{Cómo cubre la gramática cada requisito.}
+  \label{tab:cobertura_gramatica}
+\end{table}
+
+\subsection{Versión para un parser descendente}
+
+Las reglas $NP \to NP\ PP$, $VP \to VP\ PP$ y $VP \to VP\ \textit{Adv}$ son recursivas por la
+izquierda: un parser descendente recursivo que intente expandir $NP$ empezando por $NP$ entra en
+un ciclo infinito. Las eliminamos con la transformación estándar
+$A \to A\alpha \mid \beta \;\Rightarrow\; A \to \beta A',\ A' \to \alpha A' \mid \varepsilon$,
+que genera el mismo lenguaje~\cite{hmu}:
+\begin{align*}
+  S      &\to NP\ VP                       & NP'    &\to PP\ NP' \mid \varepsilon \\
+  NP     &\to NPbase\ NP'                  & AdjOpc &\to AdjP \mid \varepsilon \\
+  NPbase &\to \textit{Prn} \mid \textit{Det}\ Nom \mid \textit{Pos}\ Nom
+                                           & ObjOpc &\to NP \mid \varepsilon \\
+  Nom    &\to \textit{Noun}\ AdjOpc        & VP'    &\to PP\ VP' \mid \textit{Adv}\ VP' \mid \varepsilon \\
+  AdjP   &\to \textit{Adj} \mid \textit{Intens}\ \textit{Adj}
+                                           & PP     &\to \textit{Prep}\ NP \\
+  VP     &\to \textit{Verb}\ ObjOpc\ VP'
+\end{align*}
+El parser decide qué regla usar mirando solo la palabra actual, con los conjuntos FIRST:
+$NP$ y $NPbase$ empiezan con \textit{Prn}, \textit{Det} o \textit{Pos}; $Nom$ con
+\textit{Noun}; $AdjP$ con \textit{Adj} o \textit{Intens}; $VP$ con \textit{Verb}; y $PP$ con
+\textit{Prep}. Los no terminales auxiliares ($NP'$, $AdjOpc$, $ObjOpc$, $VP'$) no aparecen en
+los árboles: sus hijos cuelgan directamente del nodo padre, así que un $VP$ queda como
+\textit{Verb} seguido de un $NP$ opcional y de cualquier número de $PP$ y \textit{Adv}. Ese
+formato de árbol es el que comparten el parser, el LLM y las métricas.
+
+\subsection{Decisiones de diseño}
+
+\paragraph{\textit{Intens} y \textit{Adv} son categorías distintas.} Si \emph{muy} fuera un
+adverbio, en \emph{comió la manzana muy rápidamente} el parser no sabría, al ver un adverbio
+después del sustantivo, si empieza un $AdjP$ o un modificador del verbo: \textit{Adv} estaría en
+FIRST($AdjOpc$) y en FOLLOW($AdjOpc$), y la gramática dejaría de ser LL(1) en ese punto. Con dos
+categorías el conflicto desaparece.
+
+\paragraph{La concordancia no se escribe en la gramática.} Con un número finito de rasgos la
+concordancia sí se puede expresar con una CFG, pero a un costo enorme: habría que duplicar $NP$,
+$Nom$, $AdjP$ y las categorías \textit{Det}, \textit{Noun} y \textit{Adj} por cada combinación de
+género y número (cuatro), y separar los verbos por persona y número (seis combinaciones). Por eso
+la gramática acepta \emph{*La elefante grises duerme} y un analizador semántico la rechaza
+después, recorriendo el árbol. Es la misma división que en la Fase~1, donde la regla de
+\emph{declarar antes de usar} se verificaba con la tabla de símbolos y no con la gramática.
+
+\paragraph{Una ambigüedad que no se puede eliminar.} En \emph{Él mató un elefante en sus
+pijamas}, al llegar a \emph{en} el parser puede seguir dentro del objeto (el elefante estaba en
+sus pijamas) o cerrarlo y unir la frase preposicional al verbo (él estaba en pijamas).
+\textit{Prep} está a la vez en FIRST($NP'$) y en FOLLOW($NP'$), así que la gramática no es
+LL(1), y ninguna transformación lo arregla porque la ambigüedad es del español, no de la
+gramática: la oración tiene dos árboles (figura~\ref{fig:arboles_pijamas}). Decidimos que el
+parser una la frase al sustantivo más cercano, siga devolviendo un solo árbol y lo documentamos
+como limitación. La sección~\ref{sec:resultados} mide su costo.
+
+\begin{figure}[h]
+  \centering
+  \resizebox{0.49\linewidth}{!}{%
+  \begin{forest} sintaxis
+    [S [NP [NPbase [Prn [él]]]]
+       [VP [Verb [mató]]
+           [NP [NPbase [Det [un]] [Nom [Noun [elefante]]]]
+               [PP [Prep [en]] [NP [NPbase [Pos [sus]] [Nom [Noun [pijamas]]]]]]]]]
+  \end{forest}}%
+  \hfill
+  \resizebox{0.49\linewidth}{!}{%
+  \begin{forest} sintaxis
+    [S [NP [NPbase [Prn [él]]]]
+       [VP [Verb [mató]]
+           [NP [NPbase [Det [un]] [Nom [Noun [elefante]]]]]
+           [PP [Prep [en]] [NP [NPbase [Pos [sus]] [Nom [Noun [pijamas]]]]]]]]
+  \end{forest}}
+  \caption{Los dos árboles de \emph{Él mató un elefante en sus pijamas}. Izquierda: la frase
+    preposicional se une al objeto (el árbol que construye nuestro parser). Derecha: se une al
+    verbo.}
+  \label{fig:arboles_pijamas}
+\end{figure}
+
+\subsection{Lo que la gramática no puede describir}
+
+La gramática genera un fragmento pequeño y bien definido del español, y el conjunto de prueba
+incluye a propósito construcciones correctas que quedan fuera de él
+(sección~\ref{sec:set_de_prueba}). Cada una falla por una razón distinta:
+\begin{itemize}
+  \item \textbf{Sujeto omitido} (\emph{Come la manzana}, \emph{Leímos un libro}). La regla
+    $S \to NP\ VP$ exige un sujeto explícito. Agregar $S \to VP$ es fácil, pero obliga a
+    deducir el sujeto de la persona del verbo.
+  \item \textbf{Orden libre} (\emph{Leen las niñas un libro}). La gramática fija el orden
+    sujeto-verbo-objeto. Cada orden adicional necesita sus propias reglas, y decidir cuál
+    sintagma es el sujeto ya no depende de la posición sino de la concordancia.
+  \item \textbf{Coordinación} (\emph{El perro y el gato duermen}). Faltan reglas como
+    $NP \to NP\ \textit{Conj}\ NP$, que además cambian la concordancia: dos sustantivos
+    singulares forman un sujeto plural.
+  \item \textbf{Subordinadas} (\emph{La niña que lee un libro come}). Necesitan oraciones dentro
+    de sintagmas nominales ($NP \to NP\ \textit{que}\ S/NP$) con un hueco donde falta el sujeto o
+    el objeto. Las CFG pueden describir algunos de estos casos, pero la gramática crece mucho y
+    se vuelve muy ambigua.
+  \item \textbf{Vocabulario cerrado} (\emph{El perro corre en el parque}). Basta una palabra que
+    no esté en el léxico para que la oración se rechace, aunque su estructura esté en la
+    gramática.
+\end{itemize}
+Más allá de este fragmento, hay construcciones de algunas lenguas, como las dependencias
+cruzadas del suizo alemán, que ninguna CFG puede generar~\cite{shieber}. Nuestro fragmento no
+llega a ese límite: lo que lo restringe es la cobertura, no el poder expresivo de las CFG.

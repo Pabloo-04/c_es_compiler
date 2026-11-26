@@ -1,0 +1,116 @@
+% Responsable: P2
+\section{Implementación del parser}
+\label{sec:parser}
+
+\subsection{Un método por no terminal}
+
+El parser (\texttt{spanish/parser.py}) es descendente recursivo: cada no terminal de la
+gramática sin recursión por la izquierda es un método de la clase \texttt{Parser}, que consume
+las palabras que le corresponden y devuelve el nodo del árbol, o \texttt{None} si no puede.
+
+\begin{table}[h]
+  \centering
+  \small
+  \resizebox{\linewidth}{!}{%
+  \begin{tabular}{lll}
+    \toprule
+    No terminal & Método & Cómo se programa \\
+    \midrule
+    $S \to NP\ VP$ & \texttt{sentence} & secuencia \\
+    $NP \to NPbase\ NP'$ & \texttt{noun\_phrase} & \texttt{while} para cada $PP$ ($NP'$) \\
+    $NPbase \to \textit{Prn} \mid \textit{Det}\ Nom \mid \textit{Pos}\ Nom$ & \texttt{noun\_phrase\_base} & elección por la palabra actual \\
+    $Nom \to \textit{Noun}\ AdjOpc$ & \texttt{nominal} & \texttt{if} para el $AdjP$ opcional \\
+    $AdjP \to \textit{Adj} \mid \textit{Intens}\ \textit{Adj}$ & \texttt{adjective\_phrase} & intensificador opcional \\
+    $VP \to \textit{Verb}\ ObjOpc\ VP'$ & \texttt{verb\_phrase} & \texttt{if} para el objeto, \texttt{while} para $PP$ y \textit{Adv} \\
+    $PP \to \textit{Prep}\ NP$ & \texttt{prepositional\_phrase} & secuencia \\
+    \bottomrule
+  \end{tabular}}
+  \caption{Correspondencia entre la gramática y el código.}
+  \label{tab:metodos_parser}
+\end{table}
+
+Tres operaciones sostienen todos los métodos:
+\begin{itemize}
+  \item \texttt{starts(X)} dice si la palabra actual puede empezar el no terminal $X$, según su
+    conjunto FIRST (\texttt{spanish/grammar.py}). Así se programan las partes opcionales
+    ($\varepsilon$) y las repeticiones.
+  \item \texttt{match(c)} consume la palabra si tiene una lectura de la categoría $c$.
+  \item \texttt{expect(c, descripción)} es igual, pero si la categoría falta registra el error
+    con la descripción de lo que se esperaba.
+\end{itemize}
+Una oración se acepta solo si \texttt{sentence} construye el árbol \emph{y} no sobran palabras.
+El árbol se arma ya en el formato acordado: $NP'$, $AdjOpc$, $ObjOpc$ y $VP'$ no aparecen, y sus
+hijos cuelgan del nodo padre (sección~\ref{sec:gramatica}).
+
+\subsection{Palabras ambiguas}
+
+El lexer no decide la categoría de una palabra: le entrega al parser todas las lecturas que
+tiene en el léxico. Hay cinco palabras con más de una: \emph{bajo} (adjetivo o preposición) y
+cuatro formas verbales que son iguales en presente y en pretérito (\emph{matamos},
+\emph{dormimos}, \emph{compramos}, \emph{buscamos}). El parser elige la lectura que pide la
+posición en la que está: en \emph{El gato duerme bajo la mesa}, después del verbo solo puede
+empezar un $PP$, así que \emph{bajo} se lee como preposición; en \emph{El hombre bajo come},
+después del sustantivo se lee como adjetivo.
+
+Como la gramática es LL(1) salvo por la frase preposicional, esta estrategia funciona sin
+retroceso en todo el conjunto de prueba. Pero tiene un límite: en \emph{El gato bajo la mesa
+duerme}, que la gramática sí genera (\emph{bajo la mesa} como frase preposicional del sujeto), el
+parser toma \emph{bajo} como adjetivo porque puede empezar un $AdjP$, y luego falla en
+\emph{la}. La palabra ambigua vuelve a poner \textit{Prep} en FIRST($AdjOpc$) y en
+FOLLOW($AdjOpc$). Resolverlo requiere retroceso (probar la otra lectura al fallar) o un parser
+que explore todas las alternativas, como un parser de gráfico (\emph{chart parser}).
+
+Las formas verbales ambiguas no causan ese problema: sus dos lecturas son de la misma categoría
+y solo cambia el tiempo, que no interviene en la concordancia.
+
+\subsection{Pipeline y mensajes de error}
+
+\texttt{spanish/pipeline.py} encadena las cuatro etapas, igual que en la Fase~1: si una etapa
+falla, la siguiente no se ejecuta.
+\begin{center}
+  texto $\to$ \textbf{lexer} $\to$ palabras con lecturas $\to$ \textbf{parser} $\to$ árbol
+  $\to$ \textbf{concordancia} $\to$ aceptada o rechazada $\to$ \textbf{visualización}
+\end{center}
+Cada error dice en qué palabra ocurrió y por qué. El parser reporta solo el primer error
+sintáctico, porque después de él el resto del análisis ya no tiene sentido; el analizador de
+concordancia los reporta todos (tabla~\ref{tab:errores_demo}).
+
+\begin{table}[h]
+  \centering
+  \small
+  \begin{tabular}{p{0.3\linewidth}p{0.62\linewidth}}
+    \toprule
+    Oración & Salida del pipeline \\
+    \midrule
+    \emph{Ella come una manzana\#} & error léxico: carácter inválido `\#' (columna 22) \\
+    \emph{El perro corre en el parque.} & error sintáctico, palabra 3: `corre' no está en la gramática \\
+    \emph{Come la manzana.} & error sintáctico, palabra 1: se esperaba un pronombre, determinante o posesivo \\
+    \emph{El gato come muy.} & error sintáctico, palabra 4: no se esperaba `muy' \\
+    \emph{Los perros come.} & error de concordancia, palabra 3: el verbo `come' (singular) no concuerda con el sujeto `perros' (plural) \\
+    \emph{La elefante grises duerme.} & dos errores de concordancia: el determinante `La' no concuerda en género con `elefante'; el adjetivo `grises' no concuerda en número con `elefante' \\
+    \bottomrule
+  \end{tabular}
+  \caption{Mensajes de error del pipeline.}
+  \label{tab:errores_demo}
+\end{table}
+
+\subsection{Uso}
+
+El pipeline se usa desde la terminal, para la demo, o desde Python, para los experimentos:
+\begin{lstlisting}
+$ python -m spanish.pipeline "Él mató un elefante muy gris ayer." --arbol
+$ python -m spanish.pipeline "Los perros come." --tokens
+$ python -m evaluation.run_parser        # las 73 oraciones -> results/parser.jsonl
+\end{lstlisting}
+Además de aceptar o rechazar, el resultado incluye las etiquetas de cada palabra, el núcleo del
+sujeto, el verbo, el núcleo del objeto y a qué se une la primera frase preposicional. Esos datos
+salen del árbol, así que existen cuando la oración se pudo derivar, aunque la rechace la
+concordancia. Son los que se comparan con los demás sistemas en la
+sección~\ref{sec:resultados}.
+
+\subsection{Pruebas}
+
+El repositorio tiene 220 pruebas automáticas (\texttt{pytest}). Las del parser y el pipeline
+verifican la gramática, el formato de los árboles y los mensajes de error, y pasan las 73
+oraciones del conjunto de prueba por el pipeline completo. Esa prueba asegura que lo que el
+conjunto dice que la gramática acepta coincide con lo que el parser acepta.

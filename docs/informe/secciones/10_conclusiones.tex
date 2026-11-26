@@ -1,11 +1,25 @@
-% Responsable: P1
+% Responsable: P1  (versión completa en extendido/10_conclusiones.tex)
 \section{Conclusiones}
 \label{sec:conclusiones}
 
-\pendiente{P1}
-
-% Contenido esperado:
 \begin{itemize}
-  \item Qué demostró el proyecto sobre las CFG y el lenguaje natural.
-  \item Limitaciones y trabajo futuro.
+  \item \textbf{Una CFG describe bien un fragmento del español, y solo ese fragmento.} Dentro de
+    él, el parser es exacto en decisión, tipo de error y análisis; fuera de él, el 20\,\% del
+    español correcto de nuestro conjunto queda rechazado sin análisis.
+  \item \textbf{La concordancia es lo que aporta la CFG con rasgos.} Es el único sistema que
+    rechaza las 13 oraciones con error de concordancia, dice por qué y no da falsas alarmas.
+    Verificarla aparte, como en la fase semántica de un compilador, fue lo que la hizo manejable.
+  \item \textbf{La ambigüedad es el límite común.} La gramática no es LL(1) por la frase
+    preposicional; el parser acierta la unión en el 59\,\% de los casos, spaCy y el LLM en más,
+    pero ninguno reconoce las oraciones ambiguas.
+  \item \textbf{Los modelos estadísticos ganan en cobertura y pierden en garantías:} etiquetan
+    casi todo, pero no deciden la gramaticalidad o la confunden con frecuencia.
+  \item \textbf{Un LLM puede seguir reglas formales, pero no se puede confiar en que lo haga:}
+    decide como las reglas (0.97--0.99), pero a veces lo justifica con árboles inválidos.
 \end{itemize}
+
+\paragraph{Limitaciones y trabajo futuro.} El conjunto tiene 73 oraciones etiquetadas por el
+mismo equipo que escribió la gramática. El parser no retrocede, así que pierde algunas
+oraciones con palabras ambiguas; un parser de gráfico resolvería eso y mostraría todas las
+lecturas de las oraciones ambiguas. La gramática se puede ampliar con sujeto omitido y
+coordinación, y el experimento con el LLM, repetirse con modelos más grandes.

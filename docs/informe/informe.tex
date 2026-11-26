@@ -2,6 +2,9 @@
 % Cada sección está en secciones/ para que cada persona escriba la suya sin conflictos de Git.
 %
 % Compilar:  latexmk -pdf informe.tex      (o pdflatex dos veces)
+% La carpeta es autónoma (se puede subir tal cual a Overleaf):
+%   tablas/   copia de results/tablas/*.tex  (python -m evaluation.metrics)
+%   figuras/  copia de las figuras de results/figures/ que usa el informe
 \documentclass[11pt, a4paper]{article}
 
 \usepackage[T1]{fontenc}
@@ -17,17 +20,25 @@
 \usepackage{listings}
 \usepackage{tikz}
 \usetikzlibrary{automata, arrows.meta, positioning}
+\usepackage{forest}
 \usepackage[hidelinks]{hyperref}
 
-\graphicspath{{../../results/figures/}{../img/}}
+\graphicspath{{figuras/}}
 
 \lstset{basicstyle=\ttfamily\small, breaklines=true, columns=fullflexible,
-        literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1}
+        literate={á}{{\'a}}1 {é}{{\'e}}1 {í}{{\'i}}1 {ó}{{\'o}}1 {ú}{{\'u}}1 {ñ}{{\~n}}1
+                 {Á}{{\'A}}1 {É}{{\'E}}1 {Í}{{\'I}}1 {Ó}{{\'O}}1 {Ú}{{\'U}}1 {Ñ}{{\~N}}1
+                 {ü}{{\"u}}1}
 
 % Marca visible para lo pendiente; quitar antes de entregar.
 \newcommand{\pendiente}[1]{\textcolor{red}{\textbf{[PENDIENTE: #1]}}}
 % Árbol entre paréntesis en texto.
 \newcommand{\arbol}[1]{\texttt{#1}}
+% Tablas generadas por evaluation/metrics.py y figuras de results/figures (copiadas aquí).
+\newcommand{\tablagenerada}[1]{\input{tablas/#1}}
+\newcommand{\figuragenerada}[2][\linewidth]{\includegraphics[width=#1]{#2}}
+% Estilo de los árboles sintácticos (paquete forest).
+\forestset{sintaxis/.style={for tree={font=\small, s sep=4mm, l sep=3mm, l=0}}}
 
 \title{Fase 2: análisis sintáctico de un fragmento del español\\
   con una gramática libre de contexto}
@@ -35,13 +46,24 @@
   Pablo Vides (00080323) \and Gabriela Valiente (00010122) \and
   Valeria Ortiz (00206022) \and Paola Pérez Pérez (00117222) \and
   Alejandro Melgar (00026222)}
-\date{\pendiente{fecha de entrega}}
+\date{\today}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-\pendiente{P1: resumen de 150--200 palabras al terminar el informe.}
+Diseñamos una gramática libre de contexto para un fragmento del español, con sujeto, verbo,
+objeto, adjetivos, adverbios, frases preposicionales y dos tiempos verbales, y la
+implementamos en un parser descendente recursivo con un analizador de concordancia de género,
+número y persona. Comparamos este enfoque con spaCy, con dos modelos de Transformers y con un
+LLM al que le dimos las reglas de la gramática, sobre un conjunto de 73 oraciones en tres
+niveles de dificultad. El parser decide de forma exacta según la gramática y es el único sistema
+que detecta todos los errores de concordancia y dice por qué, pero rechaza sin análisis el
+20\,\% del español correcto que queda fuera de sus reglas. Los modelos estadísticos etiquetan
+casi todo, también fuera de la gramática, pero no deciden la gramaticalidad o la confunden con
+la frecuencia de las palabras. El LLM sigue las reglas en sus decisiones, pero a veces las
+justifica con árboles que no cumplen la gramática. Ningún sistema reconoce las oraciones
+ambiguas, el límite común de los tres enfoques.
 \end{abstract}
 
 \tableofcontents

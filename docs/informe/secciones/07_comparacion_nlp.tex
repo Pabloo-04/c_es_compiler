@@ -1,12 +1,38 @@
-% Responsable: P1
+% Responsable: P1  (versión completa en extendido/07_comparacion_nlp.tex)
 \section{Comparación con herramientas de NLP}
 \label{sec:comparacion_nlp}
 
-\pendiente{P1}
+Usamos spaCy~\cite{spacy} (\texttt{es\_core\_news\_sm}) y dos etiquetadores de Transformers:
+XLM-R ajustado con Universal Dependencies~\cite{xlmr, devries} y BETO-POS~\cite{beto}. Sus
+categorías UPOS~\cite{ud} se convierten a las nuestras. Como un etiquetador no decide la
+gramaticalidad, para Transformers usamos además la pseudo-log-verosimilitud de
+BETO~\cite{salazar, kauf}, con un umbral calibrado en 12 pares mínimos que no están en el
+conjunto de prueba.
 
-% Contenido esperado:
-\begin{itemize}
-  \item Qué analizan bien spaCy y Transformers que la CFG no puede (y por qué).
-  \item Qué acierta la CFG y ellos no (concordancia).
-  \item Ejemplos concretos del notebook nlp\_comparison.ipynb.
-\end{itemize}
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=\linewidth]{comparacion_cfg_grupos}
+  \caption{Proporción de oraciones de cada grupo que cada sistema acepta (izquierda) y analiza
+    con todas las etiquetas correctas (derecha).}
+  \label{fig:comparacion_cfg_grupos}
+\end{figure}
+
+\paragraph{Lo que ellos analizan y la CFG no puede.} De las 11 oraciones correctas fuera de la
+gramática, el parser no analiza ninguna. spaCy da todas las etiquetas correctas en 6, XLM-R en 7
+y BETO-POS en 10 (figura~\ref{fig:comparacion_cfg_grupos}): resuelven la coordinación, el sujeto
+omitido y los verbos fuera de nuestro léxico. Parte de sus errores son de convención: dan la
+categoría real de \emph{que} o \emph{no}, que el conjunto marca como \texttt{X}.
+
+\paragraph{Lo que la CFG acierta y ellos no.} La concordancia. El parser rechaza las 13 oraciones
+con error de concordancia y dice qué palabra falla. Los etiquetadores las etiquetan bien, pero no
+las rechazan. Comparando los rasgos que asigna spaCy se detectan 8 de 13, con 2 falsas alarmas en
+oraciones correctas. Dentro del fragmento, el parser también analiza mejor: en las 45 oraciones
+de la gramática spaCy falla en 7 y BETO-POS en 4. En las 58 oraciones que el parser deriva,
+el parser y XLM-R empatan en 1.00; pero el parser lo logra con un léxico escrito para estas
+oraciones, y XLM-R sin léxico.
+
+\paragraph{Gramaticalidad con BETO.} En los pares mínimos BETO siempre prefiere la versión
+correcta, pero con un umbral fijo mezcla gramaticalidad con frecuencia: rechaza 10 oraciones
+correctas con palabras poco comunes o muy cortas (\emph{Mi perro duerme}) y acepta 10 de las 11
+correctas fuera de la gramática. Normalizar por la frecuencia de las palabras~\cite{lau}
+reduciría ese efecto.
