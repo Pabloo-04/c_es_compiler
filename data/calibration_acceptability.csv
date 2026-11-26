@@ -1,0 +1,25 @@
+id,oracion,espanol_valido,par,tipo
+1,El perro duerme.,si,1,concordancia_sv
+2,El perro duermen.,no,1,concordancia_sv
+3,Las niñas comen una manzana.,si,2,concordancia_sv
+4,Las niñas come una manzana.,no,2,concordancia_sv
+5,Ella mató un elefante gris.,si,3,concordancia_np
+6,Ella mató un elefante grises.,no,3,concordancia_np
+7,Los elefantes grandes duermen.,si,4,concordancia_np
+8,Los elefante grandes duermen.,no,4,concordancia_np
+9,Mi perro come manzanas hoy.,si,5,concordancia_np
+10,Mi perros come manzanas hoy.,no,5,concordancia_np
+11,Ellos comieron la manzana roja.,si,6,concordancia_np
+12,Ellos comieron la manzana rojos.,no,6,concordancia_np
+13,La niña pequeña duerme en la casa.,si,7,concordancia_np
+14,La niña pequeño duerme en la casa.,no,7,concordancia_np
+15,Un perro grande mató una rata.,si,8,concordancia_np
+16,Una perro grande mató una rata.,no,8,concordancia_np
+17,Él duerme muy bien.,si,9,concordancia_sv
+18,Él duermen muy bien.,no,9,concordancia_sv
+19,Los perros comieron con sus amigos.,si,10,concordancia_sv
+20,Los perros comió con sus amigos.,no,10,concordancia_sv
+21,Mi hermana lee un libro.,si,11,orden
+22,Lee hermana mi un libro.,no,11,orden
+23,Los gatos duermen en la cama.,si,12,orden
+24,Gatos los duermen la en cama.,no,12,orden

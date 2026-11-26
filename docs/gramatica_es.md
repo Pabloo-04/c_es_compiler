@@ -235,6 +235,7 @@ Las categorías gramaticales son las de la [Parte 1](#parte-1-gramática).
 data/
   test_set.csv            ← conjunto de prueba con la salida esperada (Persona 4)
   lexicon.json            ← léxico con rasgos (Persona 3)
+  calibration_acceptability.csv ← pares mínimos para calibrar el umbral de BETO (Persona 1; fuera del conjunto de prueba)
 results/
   parser.jsonl            ← parser propio (Persona 2)
   spacy.jsonl             ← spaCy (Persona 1)
@@ -342,7 +343,7 @@ Una línea JSON por oración del conjunto, **en el mismo orden y con el mismo `i
 |---|---|---|
 | `id` | entero | El `id` de `test_set.csv`. |
 | `sistema` | texto | `parser`, `spacy`, `transformers`, `llm_zero` o `llm_few`. |
-| `acepta` | `true` / `false` / `null` | ¿La oración es válida según el sistema? `null` si el sistema no decide (spaCy y Transformers siempre analizan algo). |
+| `acepta` | `true` / `false` / `null` | ¿La oración es válida según el sistema? `null` si el sistema no decide (spaCy siempre analiza algo). Transformers decide con un modelo de lenguaje (sección 2.6 bis). |
 | `tipo_error` | texto / `null` | `sintactico`, `concordancia` o `null` si acepta o no decide. |
 | `etiquetas` | lista | `[["palabra", "Cat"], ...]`, en minúsculas y sin el punto. `null` si el sistema no etiqueta. |
 | `sujeto` | texto / `null` | Núcleo del sujeto. `""` si detecta que no hay sujeto; `null` si el sistema no lo calcula. |
@@ -390,8 +391,8 @@ Las palabras del árbol van en minúsculas, como en `etiquetas`.
 
 | Campo | Parser | spaCy | Transformers | LLM |
 |---|---|---|---|---|
-| `acepta` | ✔ | `null` | `null` | ✔ |
-| `tipo_error` | ✔ | `null` | `null` | ✔ |
+| `acepta` | ✔ | `null` | ✔ (BETO, umbral de PLL) | ✔ |
+| `tipo_error` | ✔ | `null` | `null` (no sabe por qué) | ✔ |
 | `etiquetas` | ✔ (si acepta o falla en el semántico) | ✔ | ✔ | ✔ |
 | `sujeto`, `verbo`, `objeto` | ✔ | ✔ (dependencias) | `null` si el modelo solo hace POS | ✔ |
 | `arbol` | ✔ | `null` | `null` | ✔ |
@@ -467,6 +468,23 @@ def salida_spacy(id_, doc, tiempo_ms):
 
 ---
 
+### 2.6 bis Gramaticalidad con Transformers
+
+Para que Transformers tenga un `acepta` real se usa un modelo de lenguaje con máscara en español, BETO
+(`dccuchile/bert-base-spanish-wwm-cased`), sin entrenar nada (`experiments/acceptability.py`):
+
+- **Puntuación:** pseudo-log-verosimilitud (PLL) promedio por fragmento, con la variante *word-l2r*
+  (se enmascaran también los fragmentos siguientes de la misma palabra). Mayor = más aceptable.
+- **Umbral:** el de mayor exactitud sobre `data/calibration_acceptability.csv` (pares mínimos que no
+  están en el conjunto de prueba).
+- **Decisión:** `acepta = puntuación >= umbral`. `tipo_error` queda en `null`: el modelo no sabe *por
+  qué* una oración está mal.
+
+En `results/transformers.jsonl`, `acepta` viene de BETO y `etiquetas` del etiquetador
+(`wietsedv/xlm-roberta-base-ft-udpos28-es`). `tiempo_ms` suma los dos.
+
+---
+
 ### 2.6 Salida del LLM
 
 El prompt le pide al LLM que responda **solo** con este JSON, sin texto adicional:
@@ -493,7 +511,7 @@ Este archivo es un entregable obligatorio. Antes de llamar a la API, el notebook
 
 Hay tres comparaciones. Cada sistema participa en las que tienen datos (`null` se excluye).
 
-#### a) Aceptación (parser y LLM)
+#### a) Aceptación (parser, Transformers y LLM)
 
 Se compara `acepta` con `en_gramatica`. La clase positiva es "acepta".
 
@@ -506,7 +524,7 @@ Se compara `acepta` con `en_gramatica`. La clase positiva es "acepta".
 - Cobertura (recall) = VP / (VP + FN)
 - Tasa de rechazo correcto = VN / (VN + FP)
 
-Para el LLM también se calcula contra `espanol_valido`. Si el LLM coincide más con `espanol_valido` que con `en_gramatica`, se está desviando hacia su conocimiento general del español.
+Para Transformers y el LLM también se calcula contra `espanol_valido`. Si coinciden más con `espanol_valido` que con `en_gramatica`, siguen su conocimiento general del español y no nuestras reglas. `tipo_error` no se compara para Transformers, porque siempre es `null`.
 
 #### b) Etiquetado (todos los sistemas)
 

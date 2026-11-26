@@ -19,10 +19,10 @@ import time
 
 class HFTagger:
     def __init__(self, model_name: str, use_safetensors: bool | None = None) -> None:
-        """use_safetensors=False for models that only publish pytorch_model.bin
-        (e.g. wietsedv/xlm-roberta-base-ft-udpos28-es). Otherwise transformers
-        ALSO downloads an automatic safetensors conversion from another revision
-        of the Hub: a second copy of the weights (1 GB for that model)."""
+        """Loads from a local folder with only the needed files (hf_loading.py),
+        so transformers never downloads a second copy of the weights.
+        `use_safetensors` is kept for compatibility; the weights file is chosen
+        in hf_loading.WEIGHTS."""
         import torch
         from transformers import AutoModelForTokenClassification, AutoTokenizer
         from transformers.utils import logging as hf_logging
@@ -34,8 +34,11 @@ class HFTagger:
         self.model_name = model_name
         self._torch = torch
         start = time.perf_counter()
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
-        self.model = AutoModelForTokenClassification.from_pretrained(model_name, use_safetensors=use_safetensors)
+        from .hf_loading import local_model_path
+
+        path = local_model_path(model_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(path)
+        self.model = AutoModelForTokenClassification.from_pretrained(path)
         self.model.eval()
         self.load_seconds = time.perf_counter() - start
         self.labels = self.model.config.id2label

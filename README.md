@@ -144,6 +144,8 @@ c_compiler/
 │   ├── tagsets.py              # etiquetas de spaCy/Transformers → nuestras categorías
 │   ├── reports.py              # matrices de confusión y reportes de clasificación
 │   ├── hf_tagger.py            # etiquetado palabra por palabra con modelos de HuggingFace
+│   ├── acceptability.py        # gramaticalidad con BETO (pseudo-log-verosimilitud y umbral)
+│   ├── hf_loading.py           # descarga solo los archivos necesarios de cada modelo
 │   ├── llm_client.py           # cliente intercambiable del LLM y registro de llamadas
 │   └── prompts.py              # prompts zero-shot y few-shot
 ├── notebooks/
@@ -151,6 +153,7 @@ c_compiler/
 │   └── llm_experiment.ipynb    # experimento con el LLM
 ├── data/
 │   ├── lexicon.json            # léxico con rasgos
+│   ├── calibration_acceptability.csv  # pares mínimos para calibrar el umbral de BETO
 │   └── test_set.csv            # conjunto de prueba
 ├── results/                    # salidas de cada sistema, logs, figuras y reportes (reports/)
 ├── tests/

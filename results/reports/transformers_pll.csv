@@ -1,0 +1,9 @@
+id,oracion,puntuacion,acepta,espanol_valido,en_gramatica
+1,Ella come una manzana.,-1.8722838586196304,True,True,True
+2,Los perros grandes durmieron.,-6.664851072554787,False,True,True
+3,Él mató un elefante muy gris ayer.,-6.186245118785235,False,True,True
+4,Él mató un elefante en sus pijamas.,-5.62754729622975,False,True,True
+5,La elefante grises duerme.,-7.170109191909432,False,False,False
+6,Los perros come.,-4.463948458433151,False,False,False
+7,Come la manzana.,-3.2361317151226103,True,True,False
+8,Mi niña comió la manzana con su perro.,-3.4292046051058502,True,True,True
