@@ -28,6 +28,18 @@ Message format (Spanish), reported at the word that breaks agreement:
 from .errors import AgreementError
 from .tree import Node
 
+NUMBER_NAMES = {"sg": "singular", "pl": "plural"}
+CATEGORY_NAMES = {"Det": "determinante", "Pos": "posesivo", "Adj": "adjetivo"}
+
+
+def differ(a, b) -> bool:
+    """True when two feature values clash. A missing value (None) agrees with anything."""
+    return a is not None and b is not None and a != b
+
+
+def person_name(person: int) -> str:
+    return f"{person}.ª persona"
+
 
 def subject_head(sentence: Node) -> Node | None:
     """Leaf of the subject's head: the Prn or the Noun of S → NP → NPbase."""
@@ -61,16 +73,61 @@ class AgreementChecker:
         return self.errors
 
     def check_noun_phrase(self, base: Node) -> None:
-        # TODO(P3): skip NPbase → Prn. Otherwise compare with the Noun of Nom:
-        #   - the Det (gender and number) or the Pos (number only),
-        #   - the Adj inside Nom's AdjP, if any (gender and number).
-        #   Use leaf.reading.features.gender / .number; None agrees with anything.
-        raise NotImplementedError("TODO(P3): check_noun_phrase")
+        """Det/Pos, Noun and Adj of one NPbase agree (gender and number)."""
+        if base.child("Prn"):                 # a pronoun has nothing to agree with
+            return
+        nom = base.child("Nom")
+        noun = nom.child("Noun") if nom else None
+        if noun is None or noun.reading is None:
+            return
+        adjp = nom.child("AdjP")
+        modifiers = [base.child("Det") or base.child("Pos"), adjp.child("Adj") if adjp else None]
+        for leaf in modifiers:
+            if leaf is not None and leaf.reading is not None:
+                self.check_against_noun(leaf, noun)
+
+    def check_against_noun(self, leaf: Node, noun: Node) -> None:
+        """Compare a Det/Pos/Adj with its noun; one error per word, naming what fails."""
+        mine, theirs = leaf.reading.features, noun.reading.features
+        failing = []
+        if differ(mine.gender, theirs.gender):
+            failing.append("género")
+        if differ(mine.number, theirs.number):
+            failing.append("número")
+        if failing:
+            self.error(
+                f"el {CATEGORY_NAMES[leaf.label]} '{leaf.word}' no concuerda en "
+                f"{' y '.join(failing)} con '{noun.word}'",
+                leaf,
+            )
 
     def check_subject_verb(self, sentence: Node) -> None:
-        # TODO(P3): head = subject_head(sentence), verb = main_verb(sentence).
-        #   Number from the head; person: Prn has it, Noun is 3rd person.
-        raise NotImplementedError("TODO(P3): check_subject_verb")
+        """The head of the subject and the verb agree in number and person."""
+        head, verb = subject_head(sentence), main_verb(sentence)
+        if head is None or verb is None or head.reading is None or verb.reading is None:
+            return
+        subject, action = head.reading.features, verb.reading.features
+        # Nouns are always 3rd person; a pronoun carries its own.
+        subject_person = 3 if head.label == "Noun" else subject.person
+
+        number_fails = differ(subject.number, action.number)
+        person_fails = differ(subject_person, action.person)
+        if not (number_fails or person_fails):
+            return
+
+        def describe(number, person) -> str:
+            parts = []
+            if number_fails:
+                parts.append(NUMBER_NAMES[number])
+            if person_fails:
+                parts.append(person_name(person))
+            return ", ".join(parts)
+
+        self.error(
+            f"el verbo '{verb.word}' ({describe(action.number, action.person)}) no concuerda "
+            f"con el sujeto '{head.word}' ({describe(subject.number, subject_person)})",
+            verb,
+        )
 
 
 def check(tree: Node) -> list[AgreementError]:
