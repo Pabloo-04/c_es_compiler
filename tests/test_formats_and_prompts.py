@@ -113,7 +113,8 @@ def test_parse_answer():
     assert prompts.parse_answer(good)["tipo_error"] == "concordancia"
     assert prompts.parse_answer("La oración es correcta.") is None
     assert prompts.parse_answer('{"acepta": true}') is None                  # missing keys
-    assert prompts.parse_answer("```json\n" + good + "\n```") is None        # strict (TODO P5)
+    assert prompts.parse_answer("```json\n" + good + "\n```")["verbo"] == "come"  # one code block: valid
+    assert prompts.parse_answer("Respuesta: " + good) is None                # text around it: invalid
     assert prompts.parse_answer(good)["pp_adjunta"] is None                  # optional key
     with_pp = json.dumps({**json.loads(good), "pp_adjunta": "ambigua"})
     assert prompts.parse_answer(with_pp)["pp_adjunta"] == "ambigua"
@@ -137,4 +138,5 @@ def test_ask_llm_logs_and_reuses_the_answer(tmp_path, monkeypatch):
     second = ask_llm("p", id=1, system="llm_zero", provider="fake", model="m", log_path=log)
     assert first == second == '{"x": 1}' and len(calls) == 1
     entry = find_in_log(1, "llm_zero", log)
-    assert set(entry) == {"id", "sistema", "modelo", "temperature", "prompt", "respuesta_cruda", "fecha"}
+    agreed = {"id", "sistema", "modelo", "temperature", "prompt", "respuesta_cruda", "fecha"}
+    assert agreed <= set(entry) <= agreed | {"tiempo_ms", "tokens_entrada", "tokens_salida"}

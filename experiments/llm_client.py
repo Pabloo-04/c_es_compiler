@@ -8,8 +8,14 @@ the experiment can be repeated with another model without touching the rest.
 
 Providers:
   - "manual":    prints the prompt and waits for you to paste the answer
-                 (works with any chat on the web, no API key). Implemented.
-  - "anthropic", "openai", "gemini": TODO(P5), only the one the team uses.
+                 (works with any chat on the web, no API key).
+  - "gemini":    Google Gemini API, SDK `google-genai`, key GOOGLE_API_KEY.
+                 Free tier with requests-per-minute limits: on 429/503 it waits
+                 and retries.
+  - "anthropic": Claude API, SDK `anthropic`, key ANTHROPIC_API_KEY. Current
+                 Claude models do not accept `temperature`, so it is not sent
+                 (the log still records the value that was asked for).
+  - "openai":    not implemented (the team does not use it).
 
 API keys: NEVER in the code or the notebook. Put them in a `.env` file at the
 root (already in .gitignore) or in an environment variable; api_key() reads them.
@@ -18,7 +24,12 @@ Log (docs/gramatica_es.md, 2.6): every call is appended to
 results/logs/llm.jsonl, even when the answer is invalid:
 
     {"id": 1, "sistema": "llm_zero", "modelo": "...", "temperature": 0,
-     "prompt": "...", "respuesta_cruda": "...", "fecha": "2026-11-25T14:03:11-06:00"}
+     "prompt": "...", "respuesta_cruda": "...", "fecha": "2026-11-25T14:03:11-06:00",
+     "tiempo_ms": 812.4, "tokens_entrada": 1290, "tokens_salida": 210}
+
+The last three keys are extra (for the cost analysis): tiempo_ms is the time of
+the real call, so a reused answer keeps it; the tokens appear only when the
+provider reports them.
 
 Before calling the API, ask_llm() looks for the same id and sistema in the log
 and, if found, reuses that answer (no repeated cost, reproducible runs).
@@ -26,13 +37,27 @@ and, if found, reuses that answer (no repeated cost, reproducible runs).
 
 import json
 import os
+import time
 from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 
 from evaluation.formats import LLM_LOG_PATH, ROOT
 
-Provider = Callable[[str, str, float], str]   # (prompt, model, temperature) -> raw answer
+
+@dataclass
+class Reply:
+    """A raw answer plus the tokens the provider reports (None if it does not say)."""
+
+    text: str
+    input_tokens: int | None = None
+    output_tokens: int | None = None
+
+
+# (prompt, model, temperature) -> raw answer. A provider may return a plain
+# string (manual, tests) or a Reply with the tokens.
+Provider = Callable[[str, str, float], "str | Reply"]
 
 
 # ----------------------------------------------------------------------
@@ -48,26 +73,52 @@ def manual_provider(prompt: str, model: str, temperature: float) -> str:
     return "\n".join(lines)
 
 
-def anthropic_provider(prompt: str, model: str, temperature: float) -> str:
-    # TODO(P5): official SDK `anthropic`; api_key("ANTHROPIC_API_KEY").
-    raise NotImplementedError("TODO(P5): anthropic_provider")
+def gemini_provider(prompt: str, model: str, temperature: float) -> Reply:
+    from google import genai
+    from google.genai import errors, types
+
+    client = genai.Client(api_key=api_key("GOOGLE_API_KEY"))
+    response = with_retries(
+        lambda: client.models.generate_content(
+            model=model, contents=prompt,
+            config=types.GenerateContentConfig(temperature=temperature),
+        ),
+        # 429: per-minute limit of the free tier; 500/503: model overloaded.
+        is_retryable=lambda e: isinstance(e, errors.APIError) and e.code in (429, 500, 503),
+    )
+    usage = response.usage_metadata
+    output = None
+    if usage is not None:
+        # Thinking models report their reasoning apart; it is also output (and billed).
+        output = (usage.candidates_token_count or 0) + (getattr(usage, "thoughts_token_count", 0) or 0)
+    return Reply(response.text or "", usage.prompt_token_count if usage else None, output)
+
+
+def anthropic_provider(prompt: str, model: str, temperature: float) -> Reply:
+    """Claude. `temperature` is not sent: current models reject it.
+
+    No fallback model is configured on purpose: every answer must come from
+    the model under study.
+    """
+    import anthropic
+
+    client = anthropic.Anthropic(api_key=api_key("ANTHROPIC_API_KEY"), max_retries=6)
+    response = client.messages.create(
+        model=model, max_tokens=16000, messages=[{"role": "user", "content": prompt}],
+    )
+    text = "".join(block.text for block in response.content if block.type == "text")
+    return Reply(text, response.usage.input_tokens, response.usage.output_tokens)
 
 
 def openai_provider(prompt: str, model: str, temperature: float) -> str:
-    # TODO(P5): official SDK `openai`; api_key("OPENAI_API_KEY").
-    raise NotImplementedError("TODO(P5): openai_provider")
-
-
-def gemini_provider(prompt: str, model: str, temperature: float) -> str:
-    # TODO(P5): official SDK `google-genai`; api_key("GOOGLE_API_KEY").
-    raise NotImplementedError("TODO(P5): gemini_provider")
+    raise NotImplementedError("el equipo no usa OpenAI; implementarlo solo si cambia el proveedor")
 
 
 PROVIDERS: dict[str, Provider] = {
     "manual": manual_provider,
+    "gemini": gemini_provider,
     "anthropic": anthropic_provider,
     "openai": openai_provider,
-    "gemini": gemini_provider,
 }
 
 
@@ -98,17 +149,34 @@ def ask_llm(
             print(f"Aviso: id {id} ({system}) está en el log con otro prompt; se reutiliza la respuesta "
                   "guardada. Si el prompt cambió a propósito, borra esas líneas del log.")
         return cached["respuesta_cruda"]
-    raw = PROVIDERS[provider](prompt, model, temperature)
-    append_to_log({
+    start = time.perf_counter()
+    reply = PROVIDERS[provider](prompt, model, temperature)
+    elapsed_ms = (time.perf_counter() - start) * 1000
+    if isinstance(reply, str):
+        reply = Reply(reply)
+    record = {
         "id": id,
         "sistema": system,
         "modelo": model,
         "temperature": temperature,
         "prompt": prompt,
-        "respuesta_cruda": raw,
+        "respuesta_cruda": reply.text,
         "fecha": datetime.now().astimezone().isoformat(timespec="seconds"),
-    }, log_path)
-    return raw
+        "tiempo_ms": round(elapsed_ms, 1),
+    }
+    if reply.input_tokens is not None:
+        record["tokens_entrada"] = reply.input_tokens
+    if reply.output_tokens is not None:
+        record["tokens_salida"] = reply.output_tokens
+    append_to_log(record, log_path)
+    return reply.text
+
+
+def read_log(log_path: Path = LLM_LOG_PATH) -> list[dict]:
+    """Every log entry, in order."""
+    if not log_path.exists():
+        return []
+    return [json.loads(line) for line in log_path.read_text(encoding="utf-8").splitlines() if line.strip()]
 
 
 def find_in_log(id: int, system: str, log_path: Path = LLM_LOG_PATH) -> dict | None:
@@ -128,6 +196,21 @@ def append_to_log(record: dict, log_path: Path = LLM_LOG_PATH) -> None:
     log_path.parent.mkdir(parents=True, exist_ok=True)
     with log_path.open("a", encoding="utf-8") as f:
         f.write(json.dumps(record, ensure_ascii=False) + "\n")
+
+
+def with_retries(call: Callable, is_retryable: Callable[[Exception], bool], attempts: int = 6,
+                 base_delay: float = 5.0, sleep: Callable[[float], None] = time.sleep):
+    """Run call(); on a retryable error wait 5 s, 10 s, 20 s... and try again."""
+    for attempt in range(attempts):
+        try:
+            return call()
+        except Exception as e:
+            if attempt == attempts - 1 or not is_retryable(e):
+                raise
+            delay = min(base_delay * 2 ** attempt, 120)
+            print(f"  límite de uso o modelo saturado ({e}); reintento en {delay:.0f} s")
+            sleep(delay)
+    raise ValueError("attempts debe ser al menos 1")
 
 
 def api_key(name: str) -> str:
