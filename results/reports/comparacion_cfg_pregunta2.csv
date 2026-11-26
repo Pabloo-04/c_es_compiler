@@ -1,0 +1,14 @@
+id,oracion,parser,spacy_etiquetas,spacy_rasgos_detectan,xlmr_etiquetas,beto_acepta
+5,La elefante grises duerme.,rechaza (concordancia),✓,nada,✓,False
+6,Los perros come.,rechaza (concordancia),come: Verb→Noun,nada,✓,False
+43,La perro come.,rechaza (concordancia),come: Verb→Noun,nada,✓,False
+44,El gato negros duerme.,rechaza (concordancia),✓,negros/gato: Number Plur≠Sing,✓,False
+45,Ella lee mi libros.,rechaza (concordancia),✓,mi/libros: Number Sing≠Plur,✓,False
+46,La profesora alto lee.,rechaza (concordancia),lee: Verb→Noun,alto/profesora: Gender Masc≠Fem,✓,False
+47,La niña comen el pan.,rechaza (concordancia),✓,niña/comen: sujeto-verbo Sing≠Plur,✓,True
+48,Yo come una manzana.,rechaza (concordancia),✓,nada,✓,False
+49,Nosotros compró los libros.,rechaza (concordancia),✓,Nosotros/compró: sujeto-verbo Plur≠Sing,✓,False
+50,Ellas duerme.,rechaza (concordancia),✓,Ellas/duerme: sujeto-verbo Plur≠Sing,✓,False
+58,El perro de los niños comen.,rechaza (concordancia),comen: Verb→Adj,comen/niños: Number Sing≠Plur,✓,False
+59,Los gatos de la mujer duerme.,rechaza (concordancia),✓,nada,✓,False
+60,Ella vio el gato de las niña.,rechaza (concordancia),✓,las/niña: Number Plur≠Sing,✓,False

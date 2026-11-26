@@ -1,4 +1,4 @@
 sistema,exactitud,precision_macro,cobertura_macro,f1_macro,excluidas,ms_por_oracion_mediana,errores
-spacy,0.9622641509433962,0.9869281045751634,0.9777777777777779,0.98070987654321,0,2.1195,come: Verb→Noun; come: Verb→Noun
-xlmr_ud28,0.9811320754716981,0.9777777777777779,0.9888888888888889,0.9818063677712802,0,27.002499999999998,come: Verb→Prep
-beto16,0.9622641509433962,0.9869281045751634,0.9444444444444444,0.9560185185185185,0,30.1085,él: Prn→Noun; él: Prn→Noun
+spacy,0.9422572178477691,0.9430418283015685,0.8825882641386074,0.8978282196886921,0,1.493,come: Verb→Noun; come: Verb→Noun; come: Verb→Noun; compras: Verb→Adj; lee: Verb→Noun; nosotras: Prn→Noun; tus: Pos→Det; comen: Verb→Adj; negro: Adj→Noun; come: Verb→Noun; come: Verb→Noun; lee: Verb→Noun; muy: Intens→Adv; come: Verb→Noun; comen: Verb→Adj; leen: Verb→Det; que: X→Prn; come: Verb→Noun; que: X→Prn; no: X→Adv; come: Verb→Noun; muy: Intens→Adv
+xlmr_ud28,0.984251968503937,0.9747937698869616,0.9464509898599711,0.9517966199096792,0,23.289,come: Verb→Prep; que: X→Prn; que: X→Prn; no: X→Adv; perro: Noun→Verb; come: Verb→Noun
+beto16,0.9868766404199475,0.9791396103896105,0.9666666666666668,0.9704607157548333,0,24.552,él: Prn→Noun; él: Prn→Noun; yo: Prn→Adv; él: Prn→Noun; no: X→Adv

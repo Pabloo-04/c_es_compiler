@@ -3,3 +3,16 @@ id,oracion,esperado,spacy,spacy_dependencia,parser
 8,Mi niña comió la manzana con su perro.,verbo,verbo,con → perro (obl) → comió,sustantivo
 9,El perro duerme en sus pijamas.,verbo,verbo,en → pijamas (obl) → duerme,verbo
 10,Ella comió la manzana de su perro.,sustantivo,sustantivo,de → perro (nmod) → manzana,sustantivo
+37,El gato duerme sobre la mesa.,verbo,verbo,sobre → mesa (obj) → duerme,verbo
+38,Nosotros leemos en el parque.,verbo,verbo,en → parque (obl) → leemos,verbo
+42,El gato duerme bajo la mesa.,verbo,verbo,bajo → mesa (obl) → duerme,verbo
+52,Ellos ven los árboles altos desde la casa.,verbo,sustantivo,desde → casa (nmod) → árboles,sustantivo
+53,Mi perro vio un gato en el jardín.,ambigua,verbo,en → jardín (obl) → vio,sustantivo
+54,La profesora leyó las cartas de los niños en la escuela.,sustantivo,sustantivo,de → niños (nmod) → cartas,sustantivo
+55,Las mujeres jóvenes compraron unas manzanas muy rojas para sus niños.,verbo,sustantivo,para → niños (nmod) → manzanas,sustantivo
+56,El niño pequeño buscó su pelota azul en el parque ayer.,verbo,verbo,en → parque (obl) → buscó,sustantivo
+57,El perro de los niños come.,sustantivo,sustantivo,de → niños (nmod) → perro,sustantivo
+58,El perro de los niños comen.,sustantivo,sustantivo,de → niños (nmod) → perro,sustantivo
+59,Los gatos de la mujer duerme.,sustantivo,sustantivo,de → mujer (nmod) → gatos,sustantivo
+60,Ella vio el gato de las niña.,sustantivo,sustantivo,de → niña (nmod) → gato,sustantivo
+70,El perro corre en el parque.,verbo,verbo,en → parque (obl) → corre,
