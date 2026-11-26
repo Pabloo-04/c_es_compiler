@@ -1,96 +1,137 @@
 """Prompts for the LLM experiment and parsing of its answers.  Owner: Person 5.
 
-The production rules come from spanish/grammar.py (as_bnf), so the LLM sees
-EXACTLY the grammar our parser implements.
+The production rules come from spanish/grammar.py and the words from
+data/lexicon.json, so the LLM sees EXACTLY what our parser implements.
 
 Two versions, as the assignment asks:
-  - zero-shot: rules only.
-  - few-shot:  rules + solved examples (taken from the test set, but NEVER the
-               sentence being asked: that would leak the answer).
+  - zero-shot (llm_zero): rules only.
+  - few-shot  (llm_few):  rules + the solved EXAMPLES below.
 
-The answer format is fixed so it can be parsed automatically:
+The answer must be ONLY the JSON of docs/gramatica_es.md, section 2.6:
 
-    ACEPTADA: sí | no
-    ARBOL: (O (SN ...) (SV ...))      (only if accepted)
-    ERROR: concordancia | sintactico | lexico   (only if rejected)
-    EXPLICACION: one line
+    {"acepta": true, "tipo_error": null, "etiquetas": [["ella", "Prn"], ...],
+     "sujeto": "ella", "verbo": "come", "objeto": "manzana", "arbol": "(S ...)"}
 
-DRAFT: P5 refines the wording; keep the answer format in sync with parse_answer().
+If the answer is not valid JSON, the result line gets "acepta": null and
+"error_ejecucion": "respuesta_no_json" (section 2.6).
+
+DRAFT: P5 refines the wording and the examples.
 """
 
-import re
+import json
 
-from evaluation.formats import TestItem
-from spanish.grammar import as_bnf
+from spanish.grammar import TREE_SHAPES, as_bnf
+from spanish.lexicon import Lexicon
+from spanish.tokens import Category
+
+ANSWER_KEYS = ("acepta", "tipo_error", "etiquetas", "sujeto", "verbo", "objeto", "arbol")
+
+# Few-shot examples. They must NOT be sentences of the test set
+# (tests/test_formats_and_prompts.py checks it). TODO(P5): review and choose
+# a fixed, balanced set (accepted, agreement error, syntax error).
+EXAMPLES: list[tuple[str, dict]] = [
+    ("Ella duerme.", {
+        "acepta": True, "tipo_error": None,
+        "etiquetas": [["ella", "Prn"], ["duerme", "Verb"]],
+        "sujeto": "ella", "verbo": "duerme", "objeto": "",
+        "arbol": "(S (NP (NPbase (Prn ella))) (VP (Verb duerme)))",
+    }),
+    ("La niña pequeña come una manzana roja.", {
+        "acepta": True, "tipo_error": None,
+        "etiquetas": [["la", "Det"], ["niña", "Noun"], ["pequeña", "Adj"], ["come", "Verb"],
+                      ["una", "Det"], ["manzana", "Noun"], ["roja", "Adj"]],
+        "sujeto": "niña", "verbo": "come", "objeto": "manzana",
+        "arbol": "(S (NP (NPbase (Det la) (Nom (Noun niña) (AdjP (Adj pequeña))))) "
+                 "(VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana) (AdjP (Adj roja)))))))",
+    }),
+    ("Los perro duerme.", {
+        "acepta": False, "tipo_error": "concordancia",
+        "etiquetas": [["los", "Det"], ["perro", "Noun"], ["duerme", "Verb"]],
+        "sujeto": "perro", "verbo": "duerme", "objeto": "", "arbol": None,
+    }),
+    ("Duerme el perro.", {
+        "acepta": False, "tipo_error": "sintactico",
+        "etiquetas": [["duerme", "Verb"], ["el", "Det"], ["perro", "Noun"]],
+        "sujeto": "perro", "verbo": "duerme", "objeto": "", "arbol": None,
+    }),
+]
 
 INSTRUCTIONS = """Eres un analizador sintáctico. Usa EXCLUSIVAMENTE la gramática libre de contexto \
-que aparece abajo, aunque conozcas otras construcciones válidas del español.
+y el léxico que aparecen abajo, aunque conozcas otras construcciones válidas del español.
 
 Una oración se ACEPTA solo si:
-1. se puede derivar con estas reglas, y
-2. el determinante, el sustantivo y el adjetivo concuerdan en género y número, y el sujeto \
-concuerda con el verbo en número y persona.
+1. todas sus palabras están en el léxico y la oración se puede derivar con las reglas, y
+2. dentro de cada sintagma nominal, el determinante o posesivo, el sustantivo y el adjetivo \
+concuerdan en género y número (los posesivos solo en número), y el sujeto concuerda con el verbo \
+en número y persona (los sustantivos son de 3.ª persona).
+Si no cumple 1, el error es "sintactico"; si cumple 1 pero no 2, es "concordancia".
 
-Gramática:
+Gramática (S es el símbolo inicial; ε es la cadena vacía):
 {grammar}
 
-Responde EXACTAMENTE con este formato, sin texto adicional:
-ACEPTADA: sí | no
-ARBOL: <árbol entre paréntesis, solo si se acepta, p. ej. (O (SN (DET el) (SUST gato)) (SV (V come)))>
-ERROR: <concordancia | sintactico | lexico, solo si se rechaza>
-EXPLICACION: <una línea>
+Léxico:
+{lexicon}
+
+Árbol: notación entre paréntesis. Los no terminales NP', AdjOpc, ObjOpc y VP' NO aparecen; \
+sus hijos van directamente en el nodo padre. Hijos permitidos de cada nodo:
+{shapes}
+
+Responde SOLO con un objeto JSON, sin texto adicional, con estas claves:
+"acepta" (true o false), "tipo_error" ("sintactico", "concordancia" o null si acepta),
+"etiquetas" (lista de [palabra en minúsculas, categoría], sin el punto; usa X para palabras \
+fuera del léxico), "sujeto", "verbo" y "objeto" (la palabra núcleo en minúsculas, o "" si no hay),
+"arbol" (el árbol si acepta, null si rechaza).
 """
 
 
-def zero_shot(sentence: str) -> str:
-    return INSTRUCTIONS.format(grammar=as_bnf()) + f"\nOración: {sentence}\n"
-
-
-def few_shot(sentence: str, examples: list[TestItem]) -> str:
-    """`examples` must NOT include the sentence being asked."""
-    if any(e.sentence == sentence for e in examples):
-        raise ValueError("el ejemplo incluye la oración que se pregunta")
-    shots = "\n\n".join(format_example(e) for e in examples)
-    return (
-        INSTRUCTIONS.format(grammar=as_bnf())
-        + "\nEjemplos resueltos:\n\n"
-        + shots
-        + f"\n\nOración: {sentence}\n"
-    )
-
-
-def format_example(item: TestItem) -> str:
-    """A test item written as a solved example in the answer format."""
-    lines = [f"Oración: {item.sentence}"]
-    if item.covered:
-        lines += ["ACEPTADA: sí", f"ARBOL: {item.tree}"]
-    else:
-        lines += ["ACEPTADA: no", f"ERROR: {item.error_type}"]
-    # TODO(P5): add an EXPLICACION line to the examples? (it may help or bias the model)
+def lexicon_text(lexicon: Lexicon | None = None) -> str:
+    lexicon = lexicon or Lexicon.load()
+    lines = []
+    for category in Category:
+        if category is Category.X:
+            continue
+        words = lexicon.words_by_category(category)
+        if words:
+            lines.append(f"{category.value:<6} → {' | '.join(words)}")
     return "\n".join(lines)
 
 
-def parse_answer(text: str) -> dict:
-    """Extract the fields of an answer. Missing or malformed fields come back as None.
+def shapes_text() -> str:
+    return "\n".join(f"{label:<6} → {shape.replace('|', ' | ')}" for label, shape in TREE_SHAPES.items())
 
-    Returns {"aceptada": bool | None, "arbol": str | None,
-             "tipo_error": str | None, "explicacion": str | None,
-             "formato_valido": bool}
-    """
-    def field_value(name: str) -> str | None:
-        match = re.search(rf"^\s*{name}\s*:\s*(.+?)\s*$", text, flags=re.IGNORECASE | re.MULTILINE)
-        return match.group(1) if match else None
 
-    accepted_text = (field_value("ACEPTADA") or "").lower()
-    accepted = {"sí": True, "si": True, "no": False}.get(accepted_text)
-    error = field_value("ERROR")
-    result = {
-        "aceptada": accepted,
-        "arbol": field_value("ARBOL"),
-        "tipo_error": error.lower() if error else None,
-        "explicacion": field_value("EXPLICACION"),
-    }
-    result["formato_valido"] = accepted is not None and (
-        result["arbol"] is not None if accepted else result["tipo_error"] is not None
+def instructions() -> str:
+    # TODO(P5): decide whether to send the lexicon (rules for words) or only the
+    #           phrase rules; whichever is chosen, keep it fixed for both versions.
+    return INSTRUCTIONS.format(grammar=as_bnf(), lexicon=lexicon_text(), shapes=shapes_text())
+
+
+def zero_shot(sentence: str) -> str:
+    return instructions() + f"\nOración: {sentence}\n"
+
+
+def few_shot(sentence: str, examples: list[tuple[str, dict]] = EXAMPLES) -> str:
+    if any(s == sentence for s, _ in examples):
+        raise ValueError("los ejemplos incluyen la oración que se pregunta")
+    shots = "\n\n".join(
+        f"Oración: {s}\n{json.dumps(answer, ensure_ascii=False)}" for s, answer in examples
     )
-    return result
+    return instructions() + "\nEjemplos resueltos:\n\n" + shots + f"\n\nOración: {sentence}\n"
+
+
+def parse_answer(text: str) -> dict | None:
+    """The JSON answer as a dict, or None if it is not valid JSON with the right keys.
+
+    Strict, as the agreed format says ("solo con este JSON, sin texto adicional").
+    TODO(P5): decide whether an answer wrapped in ```json ... ``` counts as valid;
+              if so, strip the fences here and say it in the report.
+    """
+    try:
+        data = json.loads(text.strip())
+    except json.JSONDecodeError:
+        return None
+    if not isinstance(data, dict) or any(key not in data for key in ANSWER_KEYS):
+        return None
+    if data["acepta"] not in (True, False):
+        return None
+    return {key: data[key] for key in ANSWER_KEYS}

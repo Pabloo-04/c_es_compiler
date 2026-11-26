@@ -1,115 +1,171 @@
 """Metrics to compare the systems.  Owner: Person 4.
 
-    python -m evaluation.metrics            # prints the tables for every system with results
+    python -m evaluation.metrics        # writes results/metrics.csv for every system with results
 
-Systems: parser (ours), spacy, transformers, llm_zero_shot, llm_few_shot.
-Every system writes results/<sistema>.jsonl in the format of
-evaluation/formats.py, so all metrics work the same for all of them.
+Definitions: docs/gramatica_es.md, section 2.7. Three comparisons; each
+system takes part in the ones it has data for (None values are excluded):
 
-PROPOSED definitions (P4 confirms them and explains them in the report).
-"Positive" = the system accepts the sentence. The reference is the
-`cubierta` field of the test set (what our CFG should accept):
+  a) Acceptance (parser and LLM): `acepta` against `en_gramatica`
+     (and, for the LLM, also against `espanol_valido`).
+         precision          = TP / (TP + FP)
+         coverage (recall)  = TP / (TP + FN)
+         correct rejection  = TN / (TN + FP)
+  b) Tagging (every system): tags word by word against `etiquetas`.
+         accuracy = right words / total words; precision and recall per category;
+         a sentence with a different number of words counts as a tagging
+         error and is reported apart.
+  c) Syntactic functions: `sujeto`, `verbo`, `objeto`, exact match.
 
-  precision            = accepted AND covered / accepted
-                         "when it accepts, how often is it right?"
-  coverage (recall)    = accepted AND covered / covered
-                         "how many of the sentences it should accept does it accept?"
-  correct_rejection    = rejected AND NOT covered / NOT covered
-                         "how many of the sentences it should reject does it reject?"
-  tree_accuracy        = same_tree(predicted, expected) / covered
-                         (only systems that produce our trees: parser, LLM)
-  tagging_accuracy     = words with the right category / words
-                         (every system: spaCy and Transformers are compared here)
-  error classification = confusion matrix expected tipo_error × predicted tipo_error
-                         on the sentences that are not covered
-
-Also useful for the analysis (P1, P5): the same metrics using `gramatical`
-instead of `cubierta` as the reference. A system that scores better against
-`gramatical` than against `cubierta` is following its knowledge of Spanish
-instead of the rules (the question of the LLM experiment).
+Output: results/metrics.csv with the columns
+    sistema,comparacion,nivel,metrica,valor
+where nivel is 1, 2, 3 or "todos".
 """
 
-from collections import Counter
+import csv
+from collections.abc import Callable
 
-from .formats import SYSTEMS, Prediction, TestItem, load_predictions, load_test_set, results_path
+from .formats import (
+    LEVELS,
+    METRICS_PATH,
+    SYSTEMS,
+    Prediction,
+    TestItem,
+    load_predictions,
+    load_test_set,
+    results_path,
+)
+
+Pair = tuple[TestItem, Prediction]
 
 
-def align(items: list[TestItem], predictions: list[Prediction]) -> list[tuple[TestItem, Prediction | None]]:
-    """Pair each test item with its prediction (None if the system skipped it)."""
+def align(items: list[TestItem], predictions: list[Prediction]) -> list[Pair]:
+    """Pair each test item with its prediction (same id). Missing ids raise."""
     by_id = {p.id: p for p in predictions}
-    return [(item, by_id.get(item.id)) for item in items]
+    missing = [i.id for i in items if i.id not in by_id]
+    if missing:
+        raise ValueError(f"faltan resultados para los ids {missing}")
+    return [(item, by_id[item.id]) for item in items]
 
 
-def precision(pairs: list[tuple[TestItem, Prediction | None]], reference: str = "covered") -> float | None:
-    """accepted AND reference / accepted. None if the system accepted nothing."""
-    # TODO(P4). Hint: getattr(item, reference) gives item.covered or item.grammatical.
+# ----------------------------------------------------------------------
+# a) Acceptance
+# ----------------------------------------------------------------------
+def confusion(pairs: list[Pair], reference: str = "in_grammar") -> dict[str, int]:
+    """{"TP": .., "FP": .., "FN": .., "TN": ..} of `acepta` against the reference.
+
+    reference: "in_grammar" (en_gramatica) or "valid_spanish" (espanol_valido).
+    Predictions with accepts None (the system does not decide) are excluded.
+    """
+    # TODO(P4). Hint: getattr(item, reference) gives the expected value.
+    raise NotImplementedError("TODO(P4): confusion")
+
+
+def precision(pairs: list[Pair], reference: str = "in_grammar") -> float | None:
+    """TP / (TP + FP). None if the denominator is 0."""
+    # TODO(P4)
     raise NotImplementedError("TODO(P4): precision")
 
 
-def coverage(pairs: list[tuple[TestItem, Prediction | None]], reference: str = "covered") -> float | None:
-    """accepted AND reference / reference."""
+def coverage(pairs: list[Pair], reference: str = "in_grammar") -> float | None:
+    """TP / (TP + FN)."""
     # TODO(P4)
     raise NotImplementedError("TODO(P4): coverage")
 
 
-def correct_rejection_rate(pairs: list[tuple[TestItem, Prediction | None]], reference: str = "covered") -> float | None:
-    """rejected AND NOT reference / NOT reference."""
+def correct_rejection_rate(pairs: list[Pair], reference: str = "in_grammar") -> float | None:
+    """TN / (TN + FP)."""
     # TODO(P4)
     raise NotImplementedError("TODO(P4): correct_rejection_rate")
 
 
-def tree_accuracy(pairs: list[tuple[TestItem, Prediction | None]]) -> float | None:
-    """Covered sentences whose predicted tree equals the expected one (spanish.tree.same_tree)."""
-    # TODO(P4): a malformed predicted tree (ValueError) counts as wrong.
-    raise NotImplementedError("TODO(P4): tree_accuracy")
-
-
-def tagging_accuracy(pairs: list[tuple[TestItem, Prediction | None]]) -> float | None:
-    """Right category per word, against the leaves of the expected tree."""
-    # TODO(P4): expected categories = [leaf.label for leaf in Node.from_bracketed(item.tree).leaves()]
-    #           Only covered sentences have an expected tree; decide whether to
-    #           label the others too (e.g. an "categorias" field in the test set).
+# ----------------------------------------------------------------------
+# b) Tagging
+# ----------------------------------------------------------------------
+def tagging_accuracy(pairs: list[Pair]) -> float | None:
+    """Right words / total words, over the sentences with the same number of
+    words as expected. None if no sentence can be compared."""
+    # TODO(P4)
     raise NotImplementedError("TODO(P4): tagging_accuracy")
 
 
-def error_confusion(pairs: list[tuple[TestItem, Prediction | None]]) -> Counter:
-    """Counter[(expected tipo_error, predicted tipo_error)] on non-covered sentences."""
+def length_mismatches(pairs: list[Pair]) -> list[int]:
+    """ids where the system produced a different number of words (reported apart)."""
     # TODO(P4)
-    raise NotImplementedError("TODO(P4): error_confusion")
+    raise NotImplementedError("TODO(P4): length_mismatches")
 
 
-def by_level(pairs, metric, **kwargs) -> dict[str, float | None]:
-    """The same metric split by level: {"simple": 0.9, "intermedia": ..., "compleja": ...}."""
+def per_category(pairs: list[Pair]) -> dict[str, dict[str, float | None]]:
+    """{"Adj": {"precision": .., "cobertura": ..}, ...} for every category."""
     # TODO(P4)
-    raise NotImplementedError("TODO(P4): by_level")
+    raise NotImplementedError("TODO(P4): per_category")
 
 
-def summary_table() -> list[dict]:
-    """One row per system that has a results file. Base for the report tables."""
-    items = load_test_set()
+# ----------------------------------------------------------------------
+# c) Syntactic functions
+# ----------------------------------------------------------------------
+def function_accuracy(pairs: list[Pair], field: str) -> float | None:
+    """field: "subject", "verb" or "object". Exact match; None predictions excluded."""
+    # TODO(P4)
+    raise NotImplementedError("TODO(P4): function_accuracy")
+
+
+# ----------------------------------------------------------------------
+# Table (implemented): one row per system, comparison, level and metric
+# ----------------------------------------------------------------------
+METRICS: list[tuple[str, str, Callable[[list[Pair]], float | None]]] = [
+    ("aceptacion", "precision", precision),
+    ("aceptacion", "cobertura", coverage),
+    ("aceptacion", "rechazo_correcto", correct_rejection_rate),
+    ("aceptacion_espanol", "precision", lambda p: precision(p, "valid_spanish")),
+    ("aceptacion_espanol", "cobertura", lambda p: coverage(p, "valid_spanish")),
+    ("aceptacion_espanol", "rechazo_correcto", lambda p: correct_rejection_rate(p, "valid_spanish")),
+    ("etiquetado", "exactitud", tagging_accuracy),
+    ("funciones", "sujeto", lambda p: function_accuracy(p, "subject")),
+    ("funciones", "verbo", lambda p: function_accuracy(p, "verb")),
+    ("funciones", "objeto", lambda p: function_accuracy(p, "object")),
+]
+
+
+def metric_rows(system: str, pairs: list[Pair]) -> list[dict]:
     rows = []
-    for system in SYSTEMS:
-        if not results_path(system).exists():
+    groups: list[tuple[str, list[Pair]]] = [("todos", pairs)]
+    groups += [(str(level), [p for p in pairs if p[0].level == level]) for level in LEVELS]
+    for level, group in groups:
+        if not group:
             continue
-        pairs = align(items, load_predictions(system))
-        rows.append({
-            "sistema": system,
-            "precision": precision(pairs),
-            "cobertura": coverage(pairs),
-            "rechazo_correcto": correct_rejection_rate(pairs),
-            "arbol_exacto": tree_accuracy(pairs),
-            "categorias": tagging_accuracy(pairs),
-        })
+        for comparison, name, metric in METRICS:
+            value = metric(group)
+            if value is not None:
+                rows.append({"sistema": system, "comparacion": comparison, "nivel": level,
+                             "metrica": name, "valor": round(value, 4)})
     return rows
 
 
-# TODO(P4): plots (matplotlib) saved to results/figures/: metrics per system,
-#           metrics per level, error confusion. Maybe in a notebook of its own.
+def compute_all() -> list[dict]:
+    items = load_test_set()
+    rows = []
+    for system in SYSTEMS:
+        if results_path(system).exists():
+            rows += metric_rows(system, align(items, load_predictions(system)))
+    return rows
+
+
+def write_metrics(rows: list[dict]) -> None:
+    METRICS_PATH.parent.mkdir(parents=True, exist_ok=True)
+    with METRICS_PATH.open("w", encoding="utf-8", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["sistema", "comparacion", "nivel", "metrica", "valor"])
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+# TODO(P4): comparative tables and plots (matplotlib) in results/figures/:
+#           metrics per system, per level, per category, and the length mismatches.
 
 
 def main() -> None:
-    for row in summary_table():
-        print(row)
+    rows = compute_all()
+    write_metrics(rows)
+    print(f"{len(rows)} filas -> {METRICS_PATH}")
 
 
 if __name__ == "__main__":

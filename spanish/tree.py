@@ -1,13 +1,17 @@
 """Shared contract: the syntax tree.
 
-Produced by the parser (P2), checked by agreement.py (P3), drawn by trees.py
-(P3), and compared by the metrics (P4) through its bracketed form:
+Produced by the parser (P2), checked by agreement.py (P3) and drawn by
+trees.py (P3). Written in bracketed notation, compatible with
+nltk.Tree.fromstring() (docs/gramatica_es.md, 2.4):
 
-    (O (SN (DET el) (SUST gato)) (SV (V come)))
+    (S (NP (NPbase (Prn ella))) (VP (Verb come) (NP (NPbase (Det una) (Nom (Noun manzana))))))
 
-The bracketed form is ALSO the format in which spaCy/Transformers results and
-the LLM answers are written (docs/formato_salida.md), so every system can be
-compared with the same string. Node.from_bracketed() reads it back.
+Flattened shape (team decision): the auxiliary non-terminals of the parser
+grammar (NP', AdjOpc, ObjOpc, VP') NEVER appear; their children hang from the
+parent. grammar.TREE_SHAPES lists the allowed children of each label, and
+grammar.tree_shape_errors() checks a tree against them.
+
+The LLM answers use the same notation; Node.from_bracketed() reads it back.
 """
 
 import re
@@ -21,8 +25,8 @@ from .tokens import Reading, Token
 class Node:
     """A node of the tree.
 
-    - Phrase node:  label "SN", children = sub-nodes, token None.
-    - Leaf node:    label = lexical category ("DET", "SUST"...), no children,
+    - Phrase node:  label "NP", children = sub-nodes, token None.
+    - Leaf node:    label = lexical category ("Det", "Noun"...), no children,
                     word = the word, token/reading = what the parser chose
                     (None when the tree was read from a string).
     """
@@ -56,7 +60,7 @@ class Node:
             yield from child.walk()
 
     def find_all(self, label: str) -> list["Node"]:
-        """Every node with this label, e.g. tree.find_all("SN")."""
+        """Every node with this label, e.g. tree.find_all("NPbase")."""
         return [node for node in self.walk() if node.label == label]
 
     def child(self, label: str) -> "Node | None":
@@ -64,11 +68,15 @@ class Node:
         return next((c for c in self.children if c.label == label), None)
 
     # ------------------------------------------------------------------
-    def to_bracketed(self) -> str:
-        """"(O (SN (DET el) (SUST gato)) (SV (V come)))"."""
+    def to_bracketed(self, lowercase: bool = False) -> str:
+        """"(S (NP (NPbase (Prn ella))) (VP (Verb come)))".
+
+        lowercase=True writes the words in lowercase, as the results files do
+        (docs/gramatica_es.md, 2.4).
+        """
         if self.is_leaf:
-            return f"({self.label} {self.word})"
-        inner = " ".join(child.to_bracketed() for child in self.children)
+            return f"({self.label} {self.word.lower() if lowercase else self.word})"
+        inner = " ".join(child.to_bracketed(lowercase) for child in self.children)
         return f"({self.label} {inner})"
 
     def pretty(self, indent: str = "  ") -> str:
@@ -93,7 +101,7 @@ class Node:
     # ------------------------------------------------------------------
     @classmethod
     def from_bracketed(cls, text: str) -> "Node":
-        """Parse "(O (SN (DET el) (SUST gato)) (SV (V come)))".
+        """Parse "(S (NP (NPbase (Prn ella))) (VP (Verb come)))".
 
         Raises ValueError if the text is not a single well-formed tree. Leaves
         come back without token/reading (only label and word).

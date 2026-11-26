@@ -1,18 +1,18 @@
 """Pipeline: lexer -> parser -> agreement -> visualization.  Owner: Person 2.
 
-    python -m spanish.pipeline "el gato negro come el pescado"
-    python -m spanish.pipeline "el gato negro come el pescado" --tokens --arbol
-    python -m spanish.pipeline "el gato negro come el pescado" --png results/figures/gato.png
+    python -m spanish.pipeline "Ella come una manzana."
+    python -m spanish.pipeline "Ella come una manzana." --tokens --arbol
+    python -m spanish.pipeline "Ella come una manzana." --png results/figures/ella.png
     python -m spanish.pipeline --archivo oraciones.txt      # one sentence per line
 
 From Python (the notebooks and evaluation/run_parser.py use this):
 
     from spanish.pipeline import analyze
-    result = analyze("el gato come")
-    result.accepted, result.tree, result.errors
+    result = analyze("Ella come una manzana.")
+    result.accepted, result.tree, result.errors, result.tags, result.subject
 
 Same flow as Phase 1: if a phase fails, the next one does not run (a sentence
-with unknown words is not parsed; a sentence that does not parse is not
+with invalid characters is not parsed; a sentence that does not parse is not
 checked for agreement).
 
 The base flow is implemented so everyone can use analyze() from day 1;
@@ -43,8 +43,46 @@ class Result:
 
     @property
     def error_type(self) -> str | None:
-        """"lexico" | "sintactico" | "concordancia" | None (for the results file)."""
+        """"sintactico" | "concordancia" | None (the "tipo_error" of the results)."""
         return self.errors[0].error_type if self.errors else None
+
+    # The fields below follow docs/gramatica_es.md, 2.4: they exist when the
+    # sentence parsed (accepted, or rejected only by agreement); otherwise None.
+    @property
+    def tags(self) -> list[list[str]] | None:
+        """[["ella", "Prn"], ["come", "Verb"], ...], lowercase words."""
+        if self.tree is None:
+            return None
+        return [[leaf.word.lower(), leaf.label] for leaf in self.tree.leaves()]
+
+    @property
+    def subject(self) -> str | None:
+        from .agreement import subject_head
+
+        return _word(subject_head(self.tree)) if self.tree else None
+
+    @property
+    def verb(self) -> str | None:
+        from .agreement import main_verb
+
+        return _word(main_verb(self.tree)) if self.tree else None
+
+    @property
+    def object(self) -> str | None:
+        """Head of the direct object (the NP right under VP), "" if there is none."""
+        if self.tree is None:
+            return None
+        vp = self.tree.child("VP")
+        np = vp.child("NP") if vp else None
+        base = np.child("NPbase") if np else None
+        if base is None:
+            return ""
+        head = base.child("Prn") or (base.child("Nom").child("Noun") if base.child("Nom") else None)
+        return _word(head)
+
+
+def _word(leaf: Node | None) -> str:
+    return leaf.word.lower() if leaf is not None and leaf.word else ""
 
 
 _LEXICON: Lexicon | None = None
@@ -95,6 +133,8 @@ def show(result: Result, args: argparse.Namespace) -> None:
         from .trees import render
 
         print(f"\nÁrbol guardado en {render(result.tree, args.png)}")
+    if result.tree is not None:
+        print(f"\nSujeto: {result.subject or '—'} · Verbo: {result.verb or '—'} · Objeto: {result.object or '—'}")
     for error in sort_by_position(result.errors):
         print(f"  {error.labeled()}")
     print("ACEPTADA" if result.accepted else "RECHAZADA")

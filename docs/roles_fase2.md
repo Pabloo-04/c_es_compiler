@@ -19,20 +19,20 @@ revisarlas juntos antes de empezar, y no cambiarlas sin avisar:
 | `Token`, `Reading`, `Features` | `spanish/tokens.py` | P2, P3, P4 |
 | `Node` y el formato de árbol entre paréntesis | `spanish/tree.py` | P2, P3, P4, P5 |
 | Errores y `tipo_error` | `spanish/errors.py` | P2, P3, P4 |
-| Set de prueba y resultados (JSONL) | `evaluation/formats.py`, `docs/formato_salida.md` | P1, P2, P4, P5 |
+| Conjunto de prueba (CSV) y resultados (JSONL) | `evaluation/formats.py`, `docs/gramatica_es.md` (Parte 2) | P1, P2, P4, P5 |
 | La gramática como datos | `spanish/grammar.py` | P1, P2, P5 |
 
 Mientras el lexer no esté listo, P2 y P3 prueban con `tests/helpers.py`
-(`tokens_from_lexicon("el gato come")`).
+(`tokens_from_lexicon("Ella come una manzana.")`).
 
 ## Archivos por persona
 
 | Persona | Código | Documentación e informe |
 | --- | --- | --- |
-| **P1** Gramática, NLP e informe | `spanish/grammar.py`, `experiments/tagsets.py`, `notebooks/nlp_comparison.ipynb` | `docs/gramatica_es.md`, `docs/formato_salida.md` (con P4); informe: `01_marco_teorico`, `02_gramatica`, `07_comparacion_nlp`, `10_conclusiones`, edición final |
+| **P1** Gramática, NLP e informe | `spanish/grammar.py`, `experiments/tagsets.py`, `notebooks/nlp_comparison.ipynb` | `docs/gramatica_es.md` (Parte 2 con P4); informe: `01_marco_teorico`, `02_gramatica`, `07_comparacion_nlp`, `10_conclusiones`, edición final |
 | **P2** Parser e integración | `spanish/parser.py`, `spanish/pipeline.py`, `evaluation/run_parser.py` | informe: `03_parser` |
 | **P3** Lexer, concordancia y árboles | `spanish/lexer.py`, `spanish/lexicon.py`, `data/lexicon.json`, `spanish/agreement.py`, `spanish/trees.py` | informe: `04_lexer_concordancia_arboles` |
-| **P4** Set de prueba y métricas | `data/test_set.jsonl` (60+ oraciones), `evaluation/metrics.py`, gráficas en `results/figures/` | `docs/formato_salida.md` (con P1); informe: `05_set_de_prueba`, `06_resultados` |
+| **P4** Set de prueba y métricas | `data/test_set.csv` (60+ oraciones), `evaluation/metrics.py`, gráficas en `results/figures/` | `docs/gramatica_es.md`, Parte 2 (con P1); informe: `05_set_de_prueba`, `06_resultados` |
 | **P5** LLM y repositorio | `experiments/llm_client.py`, `experiments/prompts.py`, `notebooks/llm_experiment.ipynb`, `README.md`, pruebas en `tests/` | informe: `08_analisis_llm`, `09_comparacion_enfoques` |
 
 Equivalencia con los nombres del documento de roles: `comparar_nlp.py` →
@@ -43,12 +43,12 @@ Equivalencia con los nombres del documento de roles: `comparar_nlp.py` →
 ## Flujo de los experimentos
 
 ```
-data/test_set.jsonl (P4)
+data/test_set.csv (P4)
    │
    ├─ python -m evaluation.run_parser        (P2) ─► results/parser.jsonl
    ├─ notebooks/nlp_comparison.ipynb         (P1) ─► results/spacy.jsonl, results/transformers.jsonl
-   ├─ notebooks/llm_experiment.ipynb         (P5) ─► results/llm_zero_shot.jsonl, results/llm_few_shot.jsonl
-   │                                                  results/logs/llm_log.jsonl
+   ├─ notebooks/llm_experiment.ipynb         (P5) ─► results/llm_zero.jsonl, results/llm_few.jsonl
+   │                                                  results/logs/llm.jsonl
    └─ python -m evaluation.metrics           (P4) ─► tablas y results/figures/
 ```
 

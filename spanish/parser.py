@@ -1,26 +1,39 @@
 """Recursive-descent parser.  Owner: Person 2.
 
+Implements the grammar of docs/gramatica_es.md, section 1.2 (without left
+recursion), exactly as the document says:
+  - each non-terminal is a method;
+  - each rule `X' → ... X' | ε` (NP', VP') is a `while` loop that repeats
+    while the current word can start it;
+  - each optional rule (AdjOpc, ObjOpc) is an `if` on the current word.
+FIRST sets are in grammar.FIRST.
+
 Input:  the tokens of one sentence (from lexer.py).
 Output: (tree, errors)
-  - tree:   the Node of the whole sentence (label "O"), or None if rejected.
+  - tree:   the Node of the whole sentence (label "S"), or None if rejected.
   - errors: list of ParseError (empty if the sentence was accepted).
 
-One method per non-terminal of spanish/grammar.py, exactly like the
-ExpressionChecker of Phase 1 (fase1/compiler/type_rules.py), which had one
-method per precedence level.
+Trees are FLATTENED (team decision): NP', AdjOpc, ObjOpc and VP' never
+appear; what they contain hangs from the parent. For example:
 
-The difference with Phase 1: words can be ambiguous and some non-terminals
-have alternatives that start with the same symbol (SV → V | V SN | V SN SP),
-so the parser needs BACKTRACKING: remember the position, try an alternative,
-and go back if it fails. mark()/reset() are implemented for that.
+    Él mató un elefante en sus pijamas.
+    (S (NP (NPbase (Prn él)))
+       (VP (Verb mató)
+           (NP (NPbase (Det un) (Nom (Noun elefante)))
+               (PP (Prep en) (NP (NPbase (Pos sus) (Nom (Noun pijamas))))))))
 
-Agreement is NOT checked here (that is agreement.py): "el gatos come" must
-parse fine and then fail agreement. Keeping them apart lets the metrics tell
-a syntax error from an agreement error.
+PP ambiguity (document, 1.4): Prep is in FIRST(NP') and in FOLLOW(NP'). The
+decision is to attach the PP to the NEAREST noun phrase: the NP' loop keeps
+taking PPs while it sees a Prep, so the VP' loop only gets a PP when the verb
+has no object ("Ella duerme en la manzana.") or after an Adv.
+
+Agreement is NOT checked here (that is agreement.py): "La elefante grises
+duerme." must parse fine and then fail agreement.
 """
 
 from .errors import ParseError
-from .tokens import Category, Reading, Token
+from .grammar import FIRST
+from .tokens import CATEGORY_BY_LABEL, Category, Reading, Token
 from .tree import Node
 
 
@@ -29,8 +42,6 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
         self.errors: list[ParseError] = []
-        # Furthest position reached: the best place to report "unexpected word".
-        self.furthest = 0
 
     # ------------------------------------------------------------------
     # Helpers (implemented)
@@ -41,21 +52,23 @@ class Parser:
     def current(self) -> Token | None:
         return None if self.at_end() else self.tokens[self.pos]
 
-    def mark(self) -> int:
-        """Save the position before trying an alternative."""
-        return self.pos
+    def starts(self, nonterminal: str) -> bool:
+        """Can the current word start this non-terminal? (FIRST set check)."""
+        token = self.current()
+        if token is None:
+            return False
+        return token.has(*(CATEGORY_BY_LABEL[label] for label in FIRST[nonterminal]))
 
-    def reset(self, mark: int) -> None:
-        """Go back to a saved position (backtracking)."""
-        self.pos = mark
+    def check(self, category: Category) -> bool:
+        token = self.current()
+        return token is not None and token.has(category)
 
     def match(self, category: Category) -> Node | None:
-        """If the current word has a reading of this category, consume it and
-        return its leaf; otherwise return None and consume nothing.
+        """If the current word can be this category, consume it and return its
+        leaf; otherwise return None and consume nothing.
 
-        If the word has several readings of the same category (e.g. two DET
-        readings with different gender), the first one is taken.
-        TODO(P2): decide whether that is enough or whether to try them all.
+        If the word has several readings of the same category (e.g. two Det
+        readings), the first one is taken.
         """
         token = self.current()
         if token is None:
@@ -64,8 +77,21 @@ class Parser:
         if not readings:
             return None
         self.pos += 1
-        self.furthest = max(self.furthest, self.pos)
         return Node.leaf(token, readings[0])
+
+    def expect(self, category: Category, what: str) -> Node | None:
+        """match(), but report a ParseError if the word is not there.
+
+        `what` is the Spanish name for the message: "un sustantivo", "un verbo"...
+        """
+        node = self.match(category)
+        if node is None:
+            token = self.current()
+            if token is None:
+                self.error(f"la oración terminó, se esperaba {what}")
+            else:
+                self.error(f"se esperaba {what}", token)
+        return node
 
     def error(self, message: str, token: Token | None = None) -> None:
         if token is None:
@@ -79,43 +105,51 @@ class Parser:
     def parse(self) -> tuple[Node | None, list[ParseError]]:
         # TODO(P2):
         #   tree = self.sentence()
-        #   if tree is None or not self.at_end():
-        #       report ONE error, pointing at self.tokens[self.furthest] if it
-        #       exists ("no se esperaba 'X' aquí"), or "oración incompleta".
-        #       return None, self.errors
+        #   if errors were reported, or words are left over ("no se esperaba 'X'"):
+        #       return None, self.errors      (report only the FIRST error)
         #   return tree, []
+        #   Hint: an X word (unknown) can only produce a ParseError; make its
+        #   message say so: "'que' no está en la gramática".
         raise NotImplementedError("TODO(P2): Parser.parse")
 
     # ------------------------------------------------------------------
-    # One method per non-terminal (keep in sync with grammar.PRODUCTIONS)
+    # One method per non-terminal of grammar.PARSER_PRODUCTIONS
     # ------------------------------------------------------------------
     def sentence(self) -> Node | None:
-        """O → SN SV"""
+        """S → NP VP"""
         # TODO(P2)
         raise NotImplementedError("TODO(P2): sentence")
 
     def noun_phrase(self) -> Node | None:
-        """SN → DET SUST | DET SUST SA | NPROP | PRON"""
-        # TODO(P2): try the longest alternative first (DET SUST SA before DET SUST).
+        """NP → NPbase NP'      NP' → PP NP' | ε     (while loop; flattened: NP → NPbase PP*)"""
+        # TODO(P2)
         raise NotImplementedError("TODO(P2): noun_phrase")
 
-    def verb_phrase(self) -> Node | None:
-        """SV → V | V SN | V SP | V SN SP | V SAdv | V SN SAdv"""
-        # TODO(P2): longest first + backtracking with mark()/reset().
-        raise NotImplementedError("TODO(P2): verb_phrase")
+    def noun_phrase_base(self) -> Node | None:
+        """NPbase → Prn | Det Nom | Pos Nom"""
+        # TODO(P2)
+        raise NotImplementedError("TODO(P2): noun_phrase_base")
+
+    def nominal(self) -> Node | None:
+        """Nom → Noun AdjOpc     AdjOpc → AdjP | ε     (if; flattened: Nom → Noun AdjP?)"""
+        # TODO(P2)
+        raise NotImplementedError("TODO(P2): nominal")
 
     def adjective_phrase(self) -> Node | None:
-        """SA → ADJ | ADV ADJ"""
+        """AdjP → Adj | Intens Adj"""
         # TODO(P2)
         raise NotImplementedError("TODO(P2): adjective_phrase")
 
-    def adverb_phrase(self) -> Node | None:
-        """SAdv → ADV"""
+    def verb_phrase(self) -> Node | None:
+        """VP → Verb ObjOpc VP'    ObjOpc → NP | ε (if)    VP' → PP VP' | Adv VP' | ε (while)
+
+        Flattened: VP → Verb NP? (PP | Adv)*
+        """
         # TODO(P2)
-        raise NotImplementedError("TODO(P2): adverb_phrase")
+        raise NotImplementedError("TODO(P2): verb_phrase")
 
     def prepositional_phrase(self) -> Node | None:
-        """SP → PREP SN"""
+        """PP → Prep NP"""
         # TODO(P2)
         raise NotImplementedError("TODO(P2): prepositional_phrase")
 
